@@ -11,7 +11,7 @@ Correr con:  uvicorn app.main:app --host 0.0.0.0 --port 8000
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import models  # noqa: F401  (importa para registrar las tablas en Base)
@@ -52,8 +52,8 @@ def index():
 
 @app.get("/app")
 def app_alias():
-    # Alias: la PWA ya instalada abre en /app (start_url del manifest). Lo mantenemos.
-    return FileResponse("static/index.html")
+    # Compatibilidad: la PWA instalada vieja abría en /app → la mandamos a "/" (una sola pantalla).
+    return RedirectResponse("/")
 
 
 @app.get("/download")
