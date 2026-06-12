@@ -1,7 +1,7 @@
 # Configuración de Fly.io.
 # Si el nombre "finanzas-jz" está ocupado, cambialo acá y usá el mismo en los comandos.
 app = "finanzas-jz"
-primary_region = "eze"   # Buenos Aires. Alternativa: "gru" (São Paulo)
+primary_region = "gru"   # São Paulo (eze/Buenos Aires está deprecada en Fly)
 
 [build]
 
