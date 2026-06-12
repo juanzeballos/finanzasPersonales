@@ -35,6 +35,7 @@ const P = {
   arrow: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
   chev: '<path d="m6 9 6 6 6-6"/>',
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
 };
 function icon(name, size = 16, cls = "") {
   return `<svg class="${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
@@ -182,6 +183,7 @@ function renderAuth() {
 
   view.innerHTML = `
     <div class="auth-wrap">
+      <a class="pill auth-download" href="/download">${icon("download", 15)}<span>Descargar</span></a>
       <button class="pill auth-theme" data-action="theme">${icon(state.dark ? "sun" : "moon", 15)}<span>${state.dark ? "Claro" : "Oscuro"}</span></button>
 
       <div class="auth-box pop">

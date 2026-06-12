@@ -46,13 +46,19 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/")
-def landing():
-    return FileResponse("static/landing.html")
+def index():
+    return FileResponse("static/index.html")
 
 
 @app.get("/app")
-def index():
+def app_alias():
+    # Alias: la PWA ya instalada abre en /app (start_url del manifest). Lo mantenemos.
     return FileResponse("static/index.html")
+
+
+@app.get("/download")
+def download():
+    return FileResponse("static/landing.html")
 
 
 @app.get("/manifest.json")
