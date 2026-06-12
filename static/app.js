@@ -33,6 +33,8 @@ const P = {
   eye: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
   eyeoff: '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>',
   arrow: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  chev: '<path d="m6 9 6 6 6-6"/>',
+  logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
 };
 function icon(name, size = 16, cls = "") {
   return `<svg class="${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
@@ -74,6 +76,7 @@ const state = {
   authLoading: false,      // mientras espera la respuesta del backend
   authError: null,         // error del backend (credenciales, etc.)
   authErrors: {},          // errores de validación por campo
+  menuOpen: false,         // menú desplegable de la marca (tema + salir)
 };
 let pollTimer = null;      // timer del sondeo (polling)
 
@@ -128,20 +131,20 @@ const postAuth = (modo, email, password, nombre) =>
 function renderHeader() {
   document.getElementById("header").innerHTML = `
     <div class="wrap">
-      <div class="brand">
+      <button class="brand" data-action="menu" aria-label="Menú">
         <span class="logo">${icon("wallet", 16)}</span>
         <span>Gastos</span>
+        ${icon("chev", 14, "brand-chev")}
+      </button>
+      <div class="tabs">
+        <button class="tab ${state.tab === "registrar" ? "active" : ""}" data-action="tab" data-tab="registrar">Registrar</button>
+        <button class="tab ${state.tab === "mes" ? "active" : ""}" data-action="tab" data-tab="mes">El mes</button>
       </div>
-      <div class="header-actions">
-        <button class="pill" data-action="theme" title="Cambiar tema">
-          ${icon(state.dark ? "sun" : "moon", 15)}<span>${state.dark ? "Claro" : "Oscuro"}</span>
-        </button>
-        <div class="tabs">
-          <button class="tab ${state.tab === "registrar" ? "active" : ""}" data-action="tab" data-tab="registrar">Registrar</button>
-          <button class="tab ${state.tab === "mes" ? "active" : ""}" data-action="tab" data-tab="mes">El mes</button>
-        </div>
-        <button class="pill" data-action="logout" title="Cerrar sesión">Salir</button>
-      </div>
+      ${state.menuOpen ? `
+      <div class="menu">
+        <button data-action="theme">${icon(state.dark ? "sun" : "moon", 16)}<span>Modo ${state.dark ? "claro" : "oscuro"}</span></button>
+        <button data-action="logout">${icon("logout", 16)}<span>Salir</span></button>
+      </div>` : ""}
     </div>`;
 }
 
@@ -541,6 +544,7 @@ async function logout() {
   state.usuario = null;
   state.expenses = [];
   state.entradas = [];
+  state.menuOpen = false;
   vistos.clear();
   render();
 }
@@ -569,6 +573,7 @@ document.addEventListener("click", (ev) => {
   }
   else if (a === "vista") { state.vista = el.dataset.vista; render(); }
   else if (a === "consejo") { pedirConsejo(); }
+  else if (a === "menu") { state.menuOpen = !state.menuOpen; render(); }
   else if (a === "logout") { logout(); }
   else if (a === "auth-submit") { submitAuth(); }
   else if (a === "auth-modo") {
@@ -578,6 +583,14 @@ document.addEventListener("click", (ev) => {
     render();
   }
   else if (a === "toggle-pw") { state.showPw = !state.showPw; render(); }
+});
+
+// Cerrar el menú de la marca al hacer clic afuera (no sobre el menú ni la marca)
+document.addEventListener("click", (ev) => {
+  if (state.menuOpen && !ev.target.closest(".menu") && !ev.target.closest('[data-action="menu"]')) {
+    state.menuOpen = false;
+    render();
+  }
 });
 
 document.addEventListener("keydown", (ev) => {
