@@ -150,15 +150,6 @@
         'Tocá “Agregar”. Listo: te queda el ícono de Gastos IA en la pantalla.',
       ],
     },
-    android: {
-      title: 'Instalar en Android',
-      sub: 'Desde Chrome.',
-      steps: [
-        'Tocá el menú ⋮ (arriba a la derecha en Chrome).',
-        'Elegí “Instalar app” (o “Agregar a pantalla principal”).',
-        'Confirmá. Listo: te queda el ícono de Gastos IA.',
-      ],
-    },
   };
   function abrirModal(tipo) {
     const t = INSTRUCCIONES[tipo];
@@ -168,17 +159,18 @@
     modal.hidden = false;
   }
   document.getElementById('mX').onclick = () => (modal.hidden = true);
-  document.getElementById('mOk').onclick = () => (modal.hidden = true);
+  document.getElementById('mOk').onclick = () => (window.location.href = '/app');
   modal.addEventListener('click', (e) => { if (e.target === modal) modal.hidden = true; });
 
-  // Botón Android: instala directo si el navegador lo permite; si no, muestra los pasos.
+  // Botón Android: instala directo si el navegador lo permite; si no (ya instalada), abre la app.
   document.getElementById('aA').addEventListener('click', async () => {
     if (deferred) {
       deferred.prompt();
       await deferred.userChoice;
       deferred = null;
     } else {
-      abrirModal('android');
+      // No hay instalación disponible (ya instalada o no instalable) → abrir la app.
+      window.location.href = '/app';
     }
   });
   // Botón iPhone: en iOS no hay instalación por botón → mostramos los pasos.
