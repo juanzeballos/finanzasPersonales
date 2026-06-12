@@ -3,7 +3,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from .. import ia
+from .. import ia, models
+from ..auth import usuario_actual
 from ..database import get_db
 from .gastos import calcular_resumen
 
@@ -30,8 +31,9 @@ def _formatear_resumen(resumen: dict) -> str:
 
 
 @router.post("/informe")
-def generar_informe(mes: str = Query(..., description="Mes en formato YYYY-MM"), db: Session = Depends(get_db)):
-    resumen = calcular_resumen(db, mes)
+def generar_informe(mes: str = Query(..., description="Mes en formato YYYY-MM"), db: Session = Depends(get_db),
+                    usuario: models.Usuario = Depends(usuario_actual)):
+    resumen = calcular_resumen(db, mes, usuario.id)
     if resumen["total"] == 0:
         return {"mes": mes, "consejo": "Todavía no hay gastos cargados en este mes."}
     try:

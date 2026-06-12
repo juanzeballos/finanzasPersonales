@@ -61,6 +61,11 @@ const state = {
   consejo: null,
   consejoLoading: false,
   open: new Set(),
+  // --- autenticación ---
+  usuario: null,           // null = no logueado; {id, email} = logueado
+  authModo: "login",       // "login" | "registro"
+  auth: { email: "", password: "" },
+  authError: null,
 };
 let pollTimer = null;      // timer del sondeo (polling)
 
@@ -87,7 +92,11 @@ async function api(url, opts) {
   const r = await fetch(url, opts);
   if (r.status === 204) return null;
   const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data.detail || "Error del servidor");
+  if (!r.ok) {
+    const err = new Error(data.detail || "Error del servidor");
+    err.status = r.status;
+    throw err;
+  }
   return data;
 }
 const cargarGastos = () => api("/gastos");
@@ -99,6 +108,11 @@ const patchTipo = (id, tipo) =>
 const deleteGasto = (id) => api(`/gastos/${id}`, { method: "DELETE" });
 const deleteEntrada = (id) => api(`/entradas/${id}`, { method: "DELETE" });
 const postInforme = (mes) => api(`/informe?mes=${mes}`, { method: "POST" });
+// --- autenticación ---
+const getYo = () => api("/yo");
+const postLogout = () => api("/logout", { method: "POST" });
+const postAuth = (modo, email, password) =>
+  api(`/${modo}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
 
 // ============================================================
 //  Render
@@ -118,8 +132,32 @@ function renderHeader() {
           <button class="tab ${state.tab === "registrar" ? "active" : ""}" data-action="tab" data-tab="registrar">Registrar</button>
           <button class="tab ${state.tab === "mes" ? "active" : ""}" data-action="tab" data-tab="mes">El mes</button>
         </div>
+        <button class="pill" data-action="logout" title="Cerrar sesión">Salir</button>
       </div>
     </div>`;
+}
+
+// --- Vista: Login / Registro (cuando no hay sesión) ---
+function renderAuth() {
+  const esLogin = state.authModo === "login";
+  document.getElementById("header").innerHTML = "";
+  document.getElementById("view").innerHTML = `
+    <div class="auth-wrap">
+      <div class="auth-card pop">
+        <div class="auth-brand"><span class="logo">${icon("wallet", 18)}</span> Gastos</div>
+        <p class="auth-title">${esLogin ? "Entrar" : "Crear cuenta"}</p>
+        <input id="auth-email" type="email" autocomplete="username" placeholder="Email" value="${esc(state.auth.email)}" />
+        <input id="auth-password" type="password" autocomplete="${esLogin ? "current-password" : "new-password"}" placeholder="Contraseña" value="${esc(state.auth.password)}" />
+        ${state.authError ? `<div class="auth-error">${icon("alert", 14)} ${esc(state.authError)}</div>` : ""}
+        <button class="auth-btn" data-action="auth-submit">${esLogin ? "Entrar" : "Crear cuenta"}</button>
+        <p class="auth-toggle">
+          ${esLogin ? "¿No tenés cuenta?" : "¿Ya tenés cuenta?"}
+          <a data-action="auth-toggle">${esLogin ? "Crear una" : "Entrar"}</a>
+        </p>
+      </div>
+    </div>`;
+  const input = document.getElementById("auth-email");
+  if (input && !state.auth.email) input.focus();
 }
 
 function cardHTML(e) {
@@ -278,6 +316,7 @@ function renderMes() {
 }
 
 function render() {
+  if (!state.usuario) { renderAuth(); return; }   // sin sesión → pantalla de login
   const active = document.activeElement;
   const inputFocused = active && active.id === "composer-input";
   const caret = inputFocused ? active.selectionStart : null;
@@ -310,6 +349,12 @@ async function refrescar() {
     state.entradas = entradas || [];
     state.error = null;
   } catch (e) {
+    if (e.status === 401) {                 // sesión vencida → volver al login
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      state.usuario = null;
+      render();
+      return;
+    }
     state.error = "No pude conectar con el servidor.";
   }
   // Clave anti-parpadeo: solo re-renderizar si el sondeo trajo algo distinto.
@@ -391,6 +436,41 @@ function setTheme(dark) {
   try { localStorage.setItem(THEME_KEY, dark ? "dark" : "light"); } catch (e) {}
 }
 
+async function cargarDatos() {
+  const [gastos, entradas] = await Promise.all([cargarGastos(), cargarEntradas()]);
+  state.expenses = gastos || [];
+  state.entradas = entradas || [];
+}
+
+async function submitAuth() {
+  const email = (state.auth.email || "").trim();
+  const password = state.auth.password || "";
+  if (!email || !password) { state.authError = "Completá email y contraseña."; render(); return; }
+  try {
+    const u = await postAuth(state.authModo, email, password);
+    state.usuario = u;
+    state.auth = { email: "", password: "" };
+    state.authError = null;
+    vistos.clear();
+    try { await cargarDatos(); } catch (e) { /* recién logueado, puede no haber datos */ }
+    render();
+    if (state.entradas.some((e) => e.estado === "pendiente")) asegurarPolling();
+  } catch (e) {
+    state.authError = e.message || "No se pudo. Reintentá.";
+    render();
+  }
+}
+
+async function logout() {
+  try { await postLogout(); } catch (e) { /* igual cerramos del lado del cliente */ }
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  state.usuario = null;
+  state.expenses = [];
+  state.entradas = [];
+  vistos.clear();
+  render();
+}
+
 // ============================================================
 //  Eventos (delegación)
 // ============================================================
@@ -415,6 +495,13 @@ document.addEventListener("click", (ev) => {
   }
   else if (a === "vista") { state.vista = el.dataset.vista; render(); }
   else if (a === "consejo") { pedirConsejo(); }
+  else if (a === "logout") { logout(); }
+  else if (a === "auth-submit") { submitAuth(); }
+  else if (a === "auth-toggle") {
+    state.authModo = state.authModo === "login" ? "registro" : "login";
+    state.authError = null;
+    render();
+  }
 });
 
 document.addEventListener("keydown", (ev) => {
@@ -422,10 +509,16 @@ document.addEventListener("keydown", (ev) => {
     ev.preventDefault();
     enviar();
   }
+  if ((ev.target.id === "auth-email" || ev.target.id === "auth-password") && ev.key === "Enter") {
+    ev.preventDefault();
+    submitAuth();
+  }
 });
 
 document.addEventListener("input", (ev) => {
   if (ev.target.id === "composer-input") state.draft = ev.target.value;
+  else if (ev.target.id === "auth-email") state.auth.email = ev.target.value;
+  else if (ev.target.id === "auth-password") state.auth.password = ev.target.value;
 });
 
 // ============================================================
@@ -440,17 +533,15 @@ document.addEventListener("input", (ev) => {
   } catch (e) {}
   setTheme(dark);
 
-  render();
+  // ¿Hay sesión activa? (la cookie viaja sola). Si sí, cargamos sus datos; si no, login.
   try {
-    const [gastos, entradas] = await Promise.all([cargarGastos(), cargarEntradas()]);
-    state.expenses = gastos || [];
-    state.entradas = entradas || [];
+    state.usuario = await getYo();
+    await cargarDatos();
   } catch (e) {
-    state.error = "No pude cargar los datos. ¿Está el servidor corriendo?";
+    state.usuario = null;
   }
   render();
-  // si quedaron entradas pendientes de una sesión anterior, sondear
-  if (state.entradas.some((e) => e.estado === "pendiente")) asegurarPolling();
+  if (state.usuario && state.entradas.some((e) => e.estado === "pendiente")) asegurarPolling();
 })();
 
 if ("serviceWorker" in navigator) {

@@ -211,3 +211,16 @@ body {
 /* spinner */
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------------- Login / Registro ---------------- */
+.auth-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.auth-card { width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--hair); border-radius: var(--r-card); padding: 24px; }
+.auth-brand { display: flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: -0.01em; }
+.auth-brand .logo { width: 28px; height: 28px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; background: var(--ink); color: var(--on-ink); }
+.auth-title { font-size: 20px; font-weight: 600; margin: 18px 0 16px; }
+.auth-card input { width: 100%; padding: 12px 14px; margin-bottom: 10px; border-radius: 12px; border: 1px solid var(--hair); background: var(--bg); color: var(--ink); font-size: 14px; outline: none; }
+.auth-card input::placeholder { color: var(--muted); }
+.auth-btn { width: 100%; padding: 12px; border: none; border-radius: 12px; background: var(--ink); color: var(--on-ink); font-weight: 600; font-size: 14px; cursor: pointer; margin-top: 4px; }
+.auth-error { display: flex; align-items: center; gap: 6px; color: var(--error); font-size: 13px; margin-bottom: 10px; }
+.auth-toggle { font-size: 13px; color: var(--muted); text-align: center; margin-top: 14px; }
+.auth-toggle a { color: var(--ink); font-weight: 500; cursor: pointer; text-decoration: underline; }

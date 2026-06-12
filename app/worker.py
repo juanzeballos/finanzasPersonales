@@ -21,7 +21,7 @@ def _procesar_una(db, entrada_id: int) -> None:
     if not entrada or entrada.estado != "pendiente":
         return
     try:
-        res = procesar_texto(db, entrada.texto)
+        res = procesar_texto(db, entrada.texto, entrada.usuario_id)
         if res["created"]:
             entrada.estado = "procesado"
             entrada.error = None

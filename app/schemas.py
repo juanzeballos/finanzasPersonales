@@ -6,7 +6,7 @@ Analogía Java: son como DTOs con validación automática (tipo Bean Validation)
 
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Categorías sugeridas (la IA puede crear otra si hace falta). Un único lugar de verdad,
 # usado también por el prompt de clasificación.
@@ -72,5 +72,19 @@ class EntradaOut(BaseModel):
     estado: str
     error: str | None = None
     creado_en: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class UsuarioCrear(BaseModel):
+    """Lo que llega en registro/login."""
+    email: str
+    password: str = Field(min_length=4)
+
+
+class UsuarioOut(BaseModel):
+    """Datos públicos del usuario (sin la contraseña)."""
+    id: int
+    email: str
 
     model_config = {"from_attributes": True}
