@@ -1,0 +1,17 @@
+{
+  "name": "Gastos IA",
+  "short_name": "Gastos",
+  "description": "Anotá tus gastos y recibí consejos de una IA local.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F2F1ED",
+  "theme_color": "#F2F1ED",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+# Entorno virtual de Python (se recrea con requirements.txt)
+.venv/
+venv/
+
+# Caché de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Base de datos local (datos personales, se regenera sola)
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs y temporales
+*.log
+hs_err_pid*.log
+replay_pid*.log
+
+# Variables de entorno (por si alguna vez se usa un archivo .env — NUNCA subir secretos)
+.env
+*.key
+*.pem
+
+# Sistema operativo / editores
+Thumbs.db
+.DS_Store
+.idea/
+.vscode/
