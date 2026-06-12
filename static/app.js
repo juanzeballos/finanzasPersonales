@@ -187,12 +187,13 @@ function renderAuth() {
         </div>
 
         <div class="auth-card">
-          <div class="seg-toggle auth-switch">
+          <div class="auth-switch">
             <button class="${esLogin ? "active" : ""}" data-action="auth-modo" data-modo="login">Entrar</button>
             <button class="${esLogin ? "" : "active"}" data-action="auth-modo" data-modo="registro">Crear cuenta</button>
           </div>
           <div class="auth-fields">
             ${campos}
+            ${esLogin ? `<div class="auth-forgot"><button type="button">¿Olvidaste la contraseña?</button></div>` : ""}
             ${state.authError ? `<div class="auth-error">${icon("alert", 14)} ${esc(state.authError)}</div>` : ""}
             <button class="auth-btn" data-action="auth-submit" ${state.authLoading ? "disabled" : ""}>
               ${state.authLoading
