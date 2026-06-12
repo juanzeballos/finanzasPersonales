@@ -238,6 +238,25 @@ body {
 .field-icon { color: var(--muted); flex-shrink: 0; }
 .field-box input { flex: 1; background: transparent; border: none; outline: none; padding: 12px 0; font-size: 14px; color: var(--ink); }
 .field-box input::placeholder { color: var(--muted); }
+/* Evitar que el autocompletado del navegador pinte el campo de otro color */
+.field-box input:-webkit-autofill,
+.field-box input:-webkit-autofill:hover,
+.field-box input:-webkit-autofill:focus,
+.field-box input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--ink);
+  -webkit-box-shadow: 0 0 0 1000px var(--bg) inset;
+  box-shadow: 0 0 0 1000px var(--bg) inset;
+  caret-color: var(--ink);
+  transition: background-color 9999s ease-out 0s;
+}
+.composer input:-webkit-autofill,
+.composer input:-webkit-autofill:hover,
+.composer input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--ink);
+  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+  box-shadow: 0 0 0 1000px var(--surface) inset;
+  caret-color: var(--ink);
+}
 .eye-btn { background: none; border: none; color: var(--muted); cursor: pointer; display: inline-flex; padding: 2px; }
 .field-error { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--error); margin-top: 4px; }
 

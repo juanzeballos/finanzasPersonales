@@ -184,7 +184,7 @@ function renderAuth() {
       <div class="auth-box pop">
         <div class="auth-brand-block">
           <div class="auth-logo">${icon("wallet", 26)}</div>
-          <h1 class="auth-app">jzapps</h1>
+          <h1 class="auth-app">Gastos IA</h1>
           <div class="auth-bars"><span class="bg-fijo"></span><span class="bg-necesario"></span><span class="bg-prescindible"></span></div>
           <p class="auth-tagline">${esLogin ? "Entrá para ver en qué se te va la plata." : "Creá tu cuenta y empezá a registrar."}</p>
         </div>
