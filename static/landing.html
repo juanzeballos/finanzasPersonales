@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#F2F1ED" />
+  <link rel="manifest" href="/manifest.json" />
+  <title>Gastos IA — registrá tus gastos por chat</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  :root{
+    --bg:#F2F1ED; --surface:#FFFFFF; --ink:#1C1E26; --onInk:#FFFFFF;
+    --muted:#6E7177; --hair:#E4E2DB;
+    --fijo:#4338CA; --nec:#0E8C7F; --pre:#D97706;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  body{ font-family:var(--sans); color:var(--ink); background:#E8E7E1; padding:18px; min-height:100vh; display:flex; align-items:center; }
+
+  .frame{ max-width:760px; margin:0 auto; border-radius:22px; overflow:hidden; border:1px solid #d8d7d0; background:var(--bg); width:100%; }
+  .inner{ padding:42px 32px; }
+
+  .row{ display:flex; align-items:center; gap:36px; justify-content:center; }
+  @media (max-width:600px){ .row{ flex-direction:column; text-align:center; } .install,.detect{ justify-content:center; } .strip{ justify-content:center; } }
+
+  .brand{ display:inline-flex; align-items:center; gap:9px; font-weight:800; font-size:20px; letter-spacing:-0.01em; margin-bottom:16px; }
+  .mark{ width:30px;height:30px;border-radius:9px;background:var(--ink);display:flex;align-items:center;justify-content:center; }
+  h1{ font-size:27px; font-weight:800; letter-spacing:-0.02em; line-height:1.18; }
+  .sub{ color:var(--muted); font-size:14px; margin-top:12px; line-height:1.55; max-width:320px; }
+
+  /* tira de color bajo el subtítulo (variante 2) */
+  .strip{ display:flex; gap:5px; margin-top:18px; }
+  .strip span{ height:6px; width:34px; border-radius:99px; }
+
+  .install{ display:flex; gap:9px; margin-top:22px; }
+  .btn{ display:inline-flex; align-items:center; gap:7px; padding:12px 18px; border-radius:13px; font-size:14px; font-weight:600; font-family:var(--sans); cursor:pointer; border:1px solid var(--hair); background:#fff; color:var(--ink); }
+  .btn.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  .detect{ display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--muted); margin-top:11px; }
+  .enter{ display:inline-block; margin-top:16px; font-size:13px; color:var(--muted); text-decoration:underline; }
+
+  /* teléfono */
+  .phone{ width:212px; flex:0 0 auto; border-radius:28px; background:var(--bg); border:7px solid #2a2c34; padding:13px 11px; }
+  .phead{ display:flex; align-items:center; gap:6px; font-weight:700; font-size:13px; margin:2px 4px 11px; }
+  .pmark{ width:19px;height:19px;border-radius:6px;background:var(--ink);display:flex;align-items:center;justify-content:center; }
+  .pcard{ background:var(--surface); border:1px solid var(--hair); border-radius:13px; padding:9px 10px; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+  .pemoji{ font-size:15px; flex:0 0 auto; }
+  .pinfo{ flex:1 1 auto; min-width:0; }
+  .pdesc{ font-size:11.5px; font-weight:700; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pmeta{ font-size:9.5px; color:var(--muted); display:flex; align-items:center; gap:4px; margin-top:2px; white-space:nowrap; overflow:hidden; }
+  .dot{ width:6px;height:6px;border-radius:99px; flex:0 0 auto; }
+  .pamt{ margin-left:auto; flex:0 0 auto; font-size:11.5px; font-weight:700; font-family:var(--mono); font-variant-numeric:tabular-nums; }
+  .pinput{ font-size:10px; color:var(--muted); background:var(--surface); border:1px solid var(--hair); border-radius:12px; padding:9px 11px; }
+
+  /* pasos con color (variante 3) */
+  .steps{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:34px; max-width:520px; margin-left:auto; margin-right:auto; }
+  .step{ text-align:center; }
+  .chip{ width:42px;height:42px;border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:19px; margin:0 auto 7px; }
+  .step:nth-child(1) .chip{ background:rgba(67,56,202,.12); }
+  .step:nth-child(2) .chip{ background:rgba(14,140,127,.14); }
+  .step:nth-child(3) .chip{ background:rgba(217,119,6,.15); }
+  .step .lbl{ font-size:12px; font-weight:600; }
+
+  /* modal de instrucciones (iOS / Android fallback) */
+  .modal{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50; }
+  .modal[hidden]{ display:none; }
+  .modal-card{ background:var(--surface); border-radius:18px; padding:22px; max-width:340px; width:100%; position:relative; }
+  .modal-card h3{ font-size:17px; font-weight:800; margin-bottom:6px; }
+  .modal-sub{ font-size:13px; color:var(--muted); margin-bottom:14px; }
+  .modal-card ol{ padding-left:18px; display:flex; flex-direction:column; gap:9px; font-size:14px; line-height:1.4; }
+  .modal-x{ position:absolute; top:12px; right:14px; background:none; border:none; font-size:18px; color:var(--muted); cursor:pointer; }
+  .modal-ok{ margin-top:18px; width:100%; padding:11px; border-radius:12px; border:none; background:var(--ink); color:#fff; font-weight:600; font-size:14px; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div class="frame">
+  <div class="inner">
+    <div class="row">
+      <div style="max-width:320px;">
+        <div class="brand">
+          <span class="mark"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg></span>
+          Gastos IA
+        </div>
+        <h1>Tu registro de gastos,<br>en un chat.</h1>
+        <p class="sub">Escribís el gasto hablando, la IA lo clasifica y a fin de mes lo ves ordenado por categoría y por cuánto control tenés sobre él.</p>
+
+        <div class="strip"><span style="background:var(--fijo)"></span><span style="background:var(--nec)"></span><span style="background:var(--pre)"></span></div>
+
+        <div class="install">
+          <button class="btn" id="aA"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.341c-.551 0-.999-.449-.999-1s.448-.999.999-.999.999.448.999.999c0 .551-.448 1-.999 1m-11.046 0c-.551 0-.999-.449-.999-1s.448-.999.999-.999.999.448.999.999c0 .551-.448 1-.999 1m11.405-6.02l1.997-3.459a.416.416 0 00-.152-.568.416.416 0 00-.568.152l-2.022 3.503C15.59 8.244 13.853 7.851 12 7.851s-3.59.393-5.137 1.099L4.841 5.447a.416.416 0 00-.568-.152.416.416 0 00-.152.568l1.997 3.459C2.689 11.187.343 14.659 0 18.761h24c-.343-4.102-2.689-7.574-6.118-9.44"/></svg>Android</button>
+          <button class="btn" id="aI"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>iPhone</button>
+        </div>
+        <div class="detect" id="det">Resaltamos tu dispositivo · el otro queda como alternativa</div>
+        <a class="enter" href="/app">o entrá desde el navegador →</a>
+      </div>
+
+      <div class="phone">
+        <div class="phead"><span class="pmark"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg></span> Gastos IA</div>
+        <div class="pcard"><span class="pemoji">🛒</span><div class="pinfo"><div class="pdesc">Supermercado</div><div class="pmeta">Súper <span class="dot" style="background:var(--nec)"></span> Necesario</div></div><span class="pamt">$15.000</span></div>
+        <div class="pcard"><span class="pemoji">🍔</span><div class="pinfo"><div class="pdesc">Delivery</div><div class="pmeta">Comida <span class="dot" style="background:var(--pre)"></span> Prescindible</div></div><span class="pamt">$3.200</span></div>
+        <div class="pcard"><span class="pemoji">💡</span><div class="pinfo"><div class="pdesc">Luz</div><div class="pmeta">Servicios <span class="dot" style="background:var(--fijo)"></span> Fijo</div></div><span class="pamt">$45.000</span></div>
+        <div class="pinput">Anotá un gasto…</div>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step"><div class="chip">✍️</div><div class="lbl">Lo escribís</div></div>
+      <div class="step"><div class="chip">✨</div><div class="lbl">La IA clasifica</div></div>
+      <div class="step"><div class="chip">📊</div><div class="lbl">Ves el resumen</div></div>
+    </div>
+  </div>
+</div>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-card">
+    <button class="modal-x" id="mX" aria-label="Cerrar">✕</button>
+    <h3 id="mTitle"></h3>
+    <p class="modal-sub" id="mSub"></p>
+    <ol id="mSteps"></ol>
+    <button class="modal-ok" id="mOk">Entendido</button>
+  </div>
+</div>
+
+<script>
+  // Detección de plataforma: resaltamos el botón del dispositivo del usuario.
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  document.getElementById(isIOS ? 'aI' : 'aA').classList.add('on');
+  document.getElementById('det').textContent = isIOS
+    ? 'Detectamos iPhone · ¿Android? tocá el otro botón'
+    : 'Detectamos Android · ¿iPhone? tocá el otro botón';
+
+  // Service worker: necesario para que la app sea "instalable".
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+  // --- Instalación ---
+  // Android (Chrome/Edge): capturamos el evento y el botón dispara el "Instalar" nativo.
+  let deferred = null;
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; });
+  window.addEventListener('appinstalled', () => { deferred = null; });
+
+  const modal = document.getElementById('modal');
+  const INSTRUCCIONES = {
+    ios: {
+      title: 'Instalar en iPhone',
+      sub: 'Tiene que ser desde Safari.',
+      steps: [
+        'Tocá el botón Compartir (el ícono del cuadrado con la flecha hacia arriba, abajo en la barra).',
+        'Deslizá las opciones y tocá “Agregar a inicio”.',
+        'Tocá “Agregar”. Listo: te queda el ícono de Gastos IA en la pantalla.',
+      ],
+    },
+    android: {
+      title: 'Instalar en Android',
+      sub: 'Desde Chrome.',
+      steps: [
+        'Tocá el menú ⋮ (arriba a la derecha en Chrome).',
+        'Elegí “Instalar app” (o “Agregar a pantalla principal”).',
+        'Confirmá. Listo: te queda el ícono de Gastos IA.',
+      ],
+    },
+  };
+  function abrirModal(tipo) {
+    const t = INSTRUCCIONES[tipo];
+    document.getElementById('mTitle').textContent = t.title;
+    document.getElementById('mSub').textContent = t.sub;
+    document.getElementById('mSteps').innerHTML = t.steps.map((s) => `<li>${s}</li>`).join('');
+    modal.hidden = false;
+  }
+  document.getElementById('mX').onclick = () => (modal.hidden = true);
+  document.getElementById('mOk').onclick = () => (modal.hidden = true);
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.hidden = true; });
+
+  // Botón Android: instala directo si el navegador lo permite; si no, muestra los pasos.
+  document.getElementById('aA').addEventListener('click', async () => {
+    if (deferred) {
+      deferred.prompt();
+      await deferred.userChoice;
+      deferred = null;
+    } else {
+      abrirModal('android');
+    }
+  });
+  // Botón iPhone: en iOS no hay instalación por botón → mostramos los pasos.
+  document.getElementById('aI').addEventListener('click', () => abrirModal('ios'));
+</script>
+
+</body>
+</html>
