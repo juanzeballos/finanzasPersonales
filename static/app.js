@@ -28,6 +28,11 @@ const P = {
   alert: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
   lock: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
   loader: '<path d="M21 12a9 9 0 1 1-6.2-8.6"/>',
+  mail: '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+  user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  eye: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+  eyeoff: '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>',
+  arrow: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
 };
 function icon(name, size = 16, cls = "") {
   return `<svg class="${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
@@ -62,10 +67,13 @@ const state = {
   consejoLoading: false,
   open: new Set(),
   // --- autenticación ---
-  usuario: null,           // null = no logueado; {id, email} = logueado
+  usuario: null,           // null = no logueado; {id, email, nombre} = logueado
   authModo: "login",       // "login" | "registro"
-  auth: { email: "", password: "" },
-  authError: null,
+  auth: { nombre: "", email: "", password: "", confirm: "" },
+  showPw: false,           // mostrar/ocultar contraseña
+  authLoading: false,      // mientras espera la respuesta del backend
+  authError: null,         // error del backend (credenciales, etc.)
+  authErrors: {},          // errores de validación por campo
 };
 let pollTimer = null;      // timer del sondeo (polling)
 
@@ -111,8 +119,8 @@ const postInforme = (mes) => api(`/informe?mes=${mes}`, { method: "POST" });
 // --- autenticación ---
 const getYo = () => api("/yo");
 const postLogout = () => api("/logout", { method: "POST" });
-const postAuth = (modo, email, password) =>
-  api(`/${modo}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+const postAuth = (modo, email, password, nombre) =>
+  api(`/${modo}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, nombre }) });
 
 // ============================================================
 //  Render
@@ -138,26 +146,68 @@ function renderHeader() {
 }
 
 // --- Vista: Login / Registro (cuando no hay sesión) ---
+function campoAuth(campo, icono, label, tipo, placeholder, autocomplete, trailing = "") {
+  const err = state.authErrors[campo];
+  return `
+    <div class="field">
+      <label class="field-label">${label}</label>
+      <div class="field-box ${err ? "field-err" : ""}">
+        ${icon(icono, 16, "field-icon")}
+        <input id="auth-${campo}" type="${tipo}" placeholder="${placeholder}" value="${esc(state.auth[campo] || "")}" autocomplete="${autocomplete}" />
+        ${trailing}
+      </div>
+      ${err ? `<div class="field-error">${icon("alert", 12)} ${esc(err)}</div>` : ""}
+    </div>`;
+}
+
 function renderAuth() {
   const esLogin = state.authModo === "login";
   document.getElementById("header").innerHTML = "";
+
+  const tipoPw = state.showPw ? "text" : "password";
+  const ojo = `<button class="eye-btn" data-action="toggle-pw" tabindex="-1" aria-label="Mostrar/ocultar">${icon(state.showPw ? "eyeoff" : "eye", 16)}</button>`;
+
+  const campos = [
+    esLogin ? "" : campoAuth("nombre", "user", "Nombre", "text", "Juan", "name"),
+    campoAuth("email", "mail", "Email", "email", "vos@email.com", "username"),
+    campoAuth("password", "lock", "Contraseña", tipoPw, "••••••••", esLogin ? "current-password" : "new-password", ojo),
+    esLogin ? "" : campoAuth("confirm", "lock", "Repetir contraseña", tipoPw, "••••••••", "new-password"),
+  ].join("");
+
   document.getElementById("view").innerHTML = `
     <div class="auth-wrap">
-      <div class="auth-card pop">
-        <div class="auth-brand"><span class="logo">${icon("wallet", 18)}</span> Gastos</div>
-        <p class="auth-title">${esLogin ? "Entrar" : "Crear cuenta"}</p>
-        <input id="auth-email" type="email" autocomplete="username" placeholder="Email" value="${esc(state.auth.email)}" />
-        <input id="auth-password" type="password" autocomplete="${esLogin ? "current-password" : "new-password"}" placeholder="Contraseña" value="${esc(state.auth.password)}" />
-        ${state.authError ? `<div class="auth-error">${icon("alert", 14)} ${esc(state.authError)}</div>` : ""}
-        <button class="auth-btn" data-action="auth-submit">${esLogin ? "Entrar" : "Crear cuenta"}</button>
-        <p class="auth-toggle">
-          ${esLogin ? "¿No tenés cuenta?" : "¿Ya tenés cuenta?"}
-          <a data-action="auth-toggle">${esLogin ? "Crear una" : "Entrar"}</a>
-        </p>
+      <button class="pill auth-theme" data-action="theme">${icon(state.dark ? "sun" : "moon", 15)}<span>${state.dark ? "Claro" : "Oscuro"}</span></button>
+
+      <div class="auth-box pop">
+        <div class="auth-brand-block">
+          <div class="auth-logo">${icon("wallet", 26)}</div>
+          <h1 class="auth-app">Gastos</h1>
+          <div class="auth-bars"><span class="bg-fijo"></span><span class="bg-necesario"></span><span class="bg-prescindible"></span></div>
+          <p class="auth-tagline">${esLogin ? "Entrá para ver en qué se te va la plata." : "Creá tu cuenta y empezá a registrar."}</p>
+        </div>
+
+        <div class="auth-card">
+          <div class="seg-toggle auth-switch">
+            <button class="${esLogin ? "active" : ""}" data-action="auth-modo" data-modo="login">Entrar</button>
+            <button class="${esLogin ? "" : "active"}" data-action="auth-modo" data-modo="registro">Crear cuenta</button>
+          </div>
+          <div class="auth-fields">
+            ${campos}
+            ${state.authError ? `<div class="auth-error">${icon("alert", 14)} ${esc(state.authError)}</div>` : ""}
+            <button class="auth-btn" data-action="auth-submit" ${state.authLoading ? "disabled" : ""}>
+              ${state.authLoading
+                ? icon("loader", 18, "spin")
+                : `<span>${esLogin ? "Entrar" : "Crear cuenta"}</span>${icon("arrow", 18)}`}
+            </button>
+          </div>
+        </div>
+
+        <p class="auth-foot">Tus gastos quedan guardados en tu cuenta.</p>
       </div>
     </div>`;
-  const input = document.getElementById("auth-email");
-  if (input && !state.auth.email) input.focus();
+
+  const primero = document.getElementById(esLogin ? "auth-email" : "auth-nombre");
+  if (primero && !primero.value) primero.focus();
 }
 
 function cardHTML(e) {
@@ -442,20 +492,38 @@ async function cargarDatos() {
   state.entradas = entradas || [];
 }
 
+const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 async function submitAuth() {
-  const email = (state.auth.email || "").trim();
-  const password = state.auth.password || "";
-  if (!email || !password) { state.authError = "Completá email y contraseña."; render(); return; }
+  const esLogin = state.authModo === "login";
+  const a = state.auth;
+  // validación local por campo (como el diseño de referencia)
+  const errs = {};
+  if (!esLogin && !a.nombre.trim()) errs.nombre = "Decime cómo te llamás.";
+  if (!a.email) errs.email = "Falta tu email.";
+  else if (!emailRe.test(a.email)) errs.email = "Ese email no parece válido.";
+  if (!a.password) errs.password = "Falta tu contraseña.";
+  else if (!esLogin && a.password.length < 6) errs.password = "Mínimo 6 caracteres.";
+  if (!esLogin && a.confirm !== a.password) errs.confirm = "Las contraseñas no coinciden.";
+  state.authErrors = errs;
+  state.authError = null;
+  if (Object.keys(errs).length) { render(); return; }
+
+  state.authLoading = true;
+  render();
   try {
-    const u = await postAuth(state.authModo, email, password);
+    const u = await postAuth(state.authModo, a.email.trim(), a.password, esLogin ? null : a.nombre.trim());
     state.usuario = u;
-    state.auth = { email: "", password: "" };
+    state.auth = { nombre: "", email: "", password: "", confirm: "" };
+    state.authErrors = {};
     state.authError = null;
+    state.authLoading = false;
     vistos.clear();
     try { await cargarDatos(); } catch (e) { /* recién logueado, puede no haber datos */ }
     render();
     if (state.entradas.some((e) => e.estado === "pendiente")) asegurarPolling();
   } catch (e) {
+    state.authLoading = false;
     state.authError = e.message || "No se pudo. Reintentá.";
     render();
   }
@@ -497,11 +565,13 @@ document.addEventListener("click", (ev) => {
   else if (a === "consejo") { pedirConsejo(); }
   else if (a === "logout") { logout(); }
   else if (a === "auth-submit") { submitAuth(); }
-  else if (a === "auth-toggle") {
-    state.authModo = state.authModo === "login" ? "registro" : "login";
+  else if (a === "auth-modo") {
+    state.authModo = el.dataset.modo;
     state.authError = null;
+    state.authErrors = {};
     render();
   }
+  else if (a === "toggle-pw") { state.showPw = !state.showPw; render(); }
 });
 
 document.addEventListener("keydown", (ev) => {
@@ -509,16 +579,19 @@ document.addEventListener("keydown", (ev) => {
     ev.preventDefault();
     enviar();
   }
-  if ((ev.target.id === "auth-email" || ev.target.id === "auth-password") && ev.key === "Enter") {
+  if (ev.target.id && ev.target.id.startsWith("auth-") && ev.key === "Enter") {
     ev.preventDefault();
     submitAuth();
   }
 });
 
 document.addEventListener("input", (ev) => {
-  if (ev.target.id === "composer-input") state.draft = ev.target.value;
-  else if (ev.target.id === "auth-email") state.auth.email = ev.target.value;
-  else if (ev.target.id === "auth-password") state.auth.password = ev.target.value;
+  const id = ev.target.id;
+  if (id === "composer-input") state.draft = ev.target.value;
+  else if (id === "auth-nombre") state.auth.nombre = ev.target.value;
+  else if (id === "auth-email") state.auth.email = ev.target.value;
+  else if (id === "auth-password") state.auth.password = ev.target.value;
+  else if (id === "auth-confirm") state.auth.confirm = ev.target.value;
 });
 
 // ============================================================

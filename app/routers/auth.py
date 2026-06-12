@@ -25,7 +25,8 @@ def registro(payload: schemas.UsuarioCrear, resp: Response, db: Session = Depend
     email = payload.email.strip().lower()
     if db.query(models.Usuario).filter(models.Usuario.email == email).first():
         raise HTTPException(status_code=400, detail="Ya existe una cuenta con ese email")
-    usuario = models.Usuario(email=email, password_hash=hashear(payload.password))
+    nombre = (payload.nombre or "").strip() or None
+    usuario = models.Usuario(email=email, nombre=nombre, password_hash=hashear(payload.password))
     db.add(usuario)
     db.commit()
     db.refresh(usuario)

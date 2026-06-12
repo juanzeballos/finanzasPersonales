@@ -77,14 +77,16 @@ class EntradaOut(BaseModel):
 
 
 class UsuarioCrear(BaseModel):
-    """Lo que llega en registro/login."""
+    """Lo que llega en registro/login (nombre solo se usa en el registro)."""
     email: str
     password: str = Field(min_length=4)
+    nombre: str | None = None
 
 
 class UsuarioOut(BaseModel):
     """Datos públicos del usuario (sin la contraseña)."""
     id: int
     email: str
+    nombre: str | None = None
 
     model_config = {"from_attributes": True}
