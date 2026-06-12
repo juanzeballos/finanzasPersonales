@@ -162,7 +162,10 @@ function campoAuth(campo, icono, label, tipo, placeholder, autocomplete, trailin
 
 function renderAuth() {
   const esLogin = state.authModo === "login";
-  document.getElementById("header").innerHTML = "";
+  const header = document.getElementById("header");
+  const view = document.getElementById("view");
+  header.style.display = "none";       // sin barra arriba: el login es pantalla completa
+  view.classList.remove("wrap");        // sacar el límite de 672px (full-bleed como la referencia)
 
   const tipoPw = state.showPw ? "text" : "password";
   const ojo = `<button class="eye-btn" data-action="toggle-pw" tabindex="-1" aria-label="Mostrar/ocultar">${icon(state.showPw ? "eyeoff" : "eye", 16)}</button>`;
@@ -174,14 +177,14 @@ function renderAuth() {
     esLogin ? "" : campoAuth("confirm", "lock", "Repetir contraseña", tipoPw, "••••••••", "new-password"),
   ].join("");
 
-  document.getElementById("view").innerHTML = `
+  view.innerHTML = `
     <div class="auth-wrap">
       <button class="pill auth-theme" data-action="theme">${icon(state.dark ? "sun" : "moon", 15)}<span>${state.dark ? "Claro" : "Oscuro"}</span></button>
 
       <div class="auth-box pop">
         <div class="auth-brand-block">
           <div class="auth-logo">${icon("wallet", 26)}</div>
-          <h1 class="auth-app">Gastos</h1>
+          <h1 class="auth-app">jzapps</h1>
           <div class="auth-bars"><span class="bg-fijo"></span><span class="bg-necesario"></span><span class="bg-prescindible"></span></div>
           <p class="auth-tagline">${esLogin ? "Entrá para ver en qué se te va la plata." : "Creá tu cuenta y empezá a registrar."}</p>
         </div>
@@ -368,6 +371,8 @@ function renderMes() {
 
 function render() {
   if (!state.usuario) { renderAuth(); return; }   // sin sesión → pantalla de login
+  document.getElementById("header").style.display = "";   // restaurar header/ancho de la app
+  document.getElementById("view").classList.add("wrap");
   const active = document.activeElement;
   const inputFocused = active && active.id === "composer-input";
   const caret = inputFocused ? active.selectionStart : null;
