@@ -1,0 +1,23 @@
+# Configuración de Fly.io.
+# IMPORTANTE: cambiá "app" por un nombre único tuyo antes de deployar
+# (si está ocupado, fly te avisa y elegís otro).
+app = "finanzas-personales-jz"
+primary_region = "eze"   # Buenos Aires. Alternativas: "gru" (São Paulo), "scl" (Santiago)
+
+[build]
+
+[http_service]
+  internal_port = 8080          # el puerto donde escucha uvicorn dentro del contenedor
+  force_https = true            # redirige todo a HTTPS
+  auto_stop_machines = "stop"   # apaga la máquina cuando no se usa (ahorra plata)
+  auto_start_machines = true    # la prende sola cuando llega un pedido
+  min_machines_running = 0      # 0 = puede quedar apagada del todo si nadie la usa
+
+# Volumen persistente: acá vive gastos.db, así los datos NO se borran al redeployar.
+[mounts]
+  source = "gastos_data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

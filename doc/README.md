@@ -17,6 +17,10 @@ App personal para anotar gastos por chat en lenguaje natural; una IA los clasifi
    Clase paso a paso de la parte visual (PWA en HTML/CSS/JS sin framework: estado,
    render, eventos, polling, tema claro/oscuro).
 
+4. **[04 — Deploy a Fly.io](04-deploy-fly.md)**
+   Cómo poner la app pública en internet (24/7) en Fly.io: contenedor, volumen
+   persistente para los datos, secretos y comandos del día a día.
+
 ## Cómo correr el proyecto (resumen)
 
 ```powershell

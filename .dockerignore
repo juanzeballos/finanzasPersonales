@@ -1,0 +1,13 @@
+# No copiar al contenedor: entorno virtual, caché, base local, git, docs, scripts locales.
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.db
+*.sqlite*
+.git/
+.gitignore
+.dockerignore
+doc/
+run.ps1
+*.log

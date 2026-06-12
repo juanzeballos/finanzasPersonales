@@ -6,11 +6,14 @@ sesiones (como sessionFactory.openSession()); 'Base' = la clase base de las
 entidades (como una @Entity con su mapeo).
 """
 
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-# Un archivo gastos.db en la carpeta del proyecto. Cambiar a Postgres en etapa 2.
-DATABASE_URL = "sqlite:///./gastos.db"
+# Por defecto un archivo local; en la nube se setea DATABASE_URL apuntando al volumen
+# persistente (ej. "sqlite:////data/gastos.db"). Así los datos sobreviven a los redeploys.
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./gastos.db")
 
 # check_same_thread=False: SQLite por defecto ata la conexión a un solo hilo;
 # FastAPI usa varios, así que lo desactivamos (es seguro con SessionLocal por request).
