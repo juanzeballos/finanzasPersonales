@@ -302,12 +302,19 @@ body {
 .divisa-opt.active { background: var(--ink); color: var(--on-ink); }
 
 /* --- Controles de edición en la card --- */
-.edit-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
-.edit-row .edit-monto { width: 110px; }
+/* La card-foot envuelve: pastillas + borrar en la 1ra línea, los controles de edición
+   en su propia línea a ancho completo. Esto evita el desborde horizontal en iOS Safari,
+   que (a diferencia de Chrome/Android) NO encoge los <select> nativos dentro de un flex. */
+.card-foot { flex-wrap: wrap; }
+.edit-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; flex: 1 1 100%; }
+.edit-row > * { min-width: 0; max-width: 100%; }
 .edit-row input, .edit-row select {
   font: inherit; padding: 6px 8px; border-radius: 8px;
   border: 1px solid var(--hair); background: var(--surface); color: var(--ink);
 }
+.edit-row .edit-monto { flex: 1 1 120px; width: auto; }
+.edit-row .edit-divisa { flex: 0 0 auto; }
+.edit-row .edit-cat, .edit-row .edit-cat-libre { flex: 1 1 100%; }
 
 /* --- Aviso suave (falta_monto) --- */
 .aviso.info {
