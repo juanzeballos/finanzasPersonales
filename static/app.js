@@ -44,7 +44,19 @@ function icon(name, size = 16, cls = "") {
 
 // ---------- Helpers ----------
 const pad = (n) => String(n).padStart(2, "0");
-const fmt = (n) => "$" + Math.round(Number(n) || 0).toLocaleString("es-AR");
+const CURRENCIES = {
+  ARS: { sym: "$",   dec: 0 },
+  USD: { sym: "US$", dec: 2 },
+  BRL: { sym: "R$",  dec: 2 },
+  EUR: { sym: "€",   dec: 2 },
+};
+const CUR_LIST = ["ARS", "USD", "BRL", "EUR"];
+const fmt = (n, divisa = "ARS") => {
+  const c = CURRENCIES[divisa] || CURRENCIES.ARS;
+  return c.sym + (Number(n) || 0).toLocaleString("es-AR", {
+    minimumFractionDigits: c.dec, maximumFractionDigits: c.dec,
+  });
+};
 const monthKey = (fecha) => String(fecha).slice(0, 7);
 function todayStr() {
   const d = new Date();
@@ -86,7 +98,7 @@ let ultimoSnapshot = "";
 function snapshot() {
   return JSON.stringify({
     err: state.error,
-    g: state.expenses.map((e) => [e.id, e.tipo, e.monto, e.descripcion, e.categoria, e.emoji, e.fecha]),
+    g: state.expenses.map((e) => [e.id, e.tipo, e.monto, e.descripcion, e.categoria, e.emoji, e.fecha, e.divisa]),
     e: state.entradas.map((x) => [x.id, x.estado, x.error]),
   });
 }
@@ -237,7 +249,7 @@ function cardHTML(e) {
             <span class="card-tipo t-${e.tipo}"><span class="dot"></span>${tipoLabel(e.tipo)}</span>
           </div>
         </div>
-        <span class="card-amount num">${fmt(e.monto)}</span>
+        <span class="card-amount num">${fmt(e.monto, e.divisa)}</span>
       </button>
       ${abierto ? `
       <div class="card-foot">
@@ -252,7 +264,9 @@ function renderRegistrar() {
   const hoy = state.expenses
     .filter((e) => e.fecha === todayStr())
     .sort((a, b) => a.id - b.id);
-  const totalHoy = hoy.reduce((s, e) => s + e.monto, 0);
+  const totalesHoy = {};
+  hoy.forEach((e) => { totalesHoy[e.divisa] = (totalesHoy[e.divisa] || 0) + e.monto; });
+  const totalHoyStr = Object.entries(totalesHoy).map(([d, m]) => fmt(m, d)).join(" · ");
 
   const pendientes = state.entradas.filter((e) => e.estado === "pendiente");
   const errores = state.entradas.filter((e) => e.estado === "error");
@@ -283,7 +297,7 @@ function renderRegistrar() {
   return `
     <div class="scroll" id="scroll">${chat}</div>
     <div class="composer">
-      ${hoy.length > 0 ? `<div class="total-line"><span class="lbl">Hoy llevás</span><span class="num" style="font-weight:600">${fmt(totalHoy)}</span></div>` : ""}
+      ${hoy.length > 0 ? `<div class="total-line"><span class="lbl">Hoy llevás</span><span class="num" style="font-weight:600">${totalHoyStr}</span></div>` : ""}
       <div class="row">
         <input id="composer-input" placeholder="Anotá un gasto…" autocomplete="off" value="${esc(state.draft)}" />
         <button class="send-btn" data-action="send">${icon("send", 17)}</button>
