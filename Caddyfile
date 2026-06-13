@@ -1,0 +1,5 @@
+# Caddy saca el certificado HTTPS solo (Let's Encrypt) para el dominio de la variable DOMINIO.
+# Redirige todo el tráfico HTTPS a la app interna (web:8080).
+{$DOMINIO} {
+	reverse_proxy web:8080
+}

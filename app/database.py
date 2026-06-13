@@ -11,15 +11,17 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-# Por defecto un archivo local; en la nube se setea DATABASE_URL apuntando al volumen
-# persistente (ej. "sqlite:////data/gastos.db"). Así los datos sobreviven a los redeploys.
+# Por defecto SQLite local; en producción se setea DATABASE_URL a Postgres
+# (ej. "postgresql+psycopg://usuario:pass@db:5432/gastos").
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./gastos.db")
 
-# check_same_thread=False: SQLite por defecto ata la conexión a un solo hilo;
-# FastAPI usa varios, así que lo desactivamos (es seguro con SessionLocal por request).
-# timeout=30: si el worker y el web escriben a la vez, esperar hasta 30s por el lock
-# en vez de fallar al toque ("database is locked").
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False, "timeout": 30})
+if DATABASE_URL.startswith("sqlite"):
+    # SQLite: permitir varios hilos (FastAPI usa varios) y esperar el lock hasta 30s
+    # en vez de fallar al toque ("database is locked").
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False, "timeout": 30})
+else:
+    # Postgres u otros: pool_pre_ping evita usar conexiones que el servidor ya cerró.
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

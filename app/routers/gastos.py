@@ -2,6 +2,8 @@
 filtrados por usuario (cada uno ve solo lo suyo).
 """
 
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -14,9 +16,26 @@ from ..database import get_db
 router = APIRouter()
 
 
+def rango_mes(mes: str) -> tuple[date, date]:
+    """'YYYY-MM' -> (primer día del mes, primer día del mes siguiente).
+
+    Sirve para filtrar por mes con un rango de fechas, que funciona IGUAL en SQLite y
+    Postgres (evitamos func.strftime, que es solo de SQLite).
+    """
+    anio, m = int(mes[:4]), int(mes[5:7])
+    inicio = date(anio, m, 1)
+    fin = date(anio + 1, 1, 1) if m == 12 else date(anio, m + 1, 1)
+    return inicio, fin
+
+
 def calcular_resumen(db: Session, mes: str, usuario_id: int) -> dict:
     """Totales del mes por categoría y por tipo, SOLO de ese usuario."""
-    filtro = (func.strftime("%Y-%m", models.Gasto.fecha) == mes) & (models.Gasto.usuario_id == usuario_id)
+    inicio, fin = rango_mes(mes)
+    filtro = (
+        (models.Gasto.usuario_id == usuario_id)
+        & (models.Gasto.fecha >= inicio)
+        & (models.Gasto.fecha < fin)
+    )
 
     por_categoria = (
         db.query(models.Gasto.categoria, func.sum(models.Gasto.monto))
@@ -77,7 +96,8 @@ def listar_gastos(mes: str | None = Query(default=None), db: Session = Depends(g
                   usuario: models.Usuario = Depends(usuario_actual)):
     q = db.query(models.Gasto).filter(models.Gasto.usuario_id == usuario.id)
     if mes:
-        q = q.filter(func.strftime("%Y-%m", models.Gasto.fecha) == mes)
+        inicio, fin = rango_mes(mes)
+        q = q.filter(models.Gasto.fecha >= inicio, models.Gasto.fecha < fin)
     return q.order_by(models.Gasto.fecha.desc(), models.Gasto.id.desc()).all()
 
 
