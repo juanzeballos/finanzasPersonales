@@ -38,7 +38,7 @@ Detalle completo del código y la teoría en `doc/01..04`.
 - Hetzner cobra **por hora** (borrar/recrear cuesta centavos).
 
 ## 5. Lo que FALTA hacer (deploy en la VM, por SSH desde la PC)
-1. **Verificar SSH:** `ssh -i $HOME\.ssh\hetzner -o IdentitiesOnly=yes root@135.181.34.126 'echo OK'`.
+1. ✅ **SSH verificado** — `ssh -i $HOME\.ssh\hetzner -o IdentitiesOnly=yes root@135.181.34.126` entra OK con la clave. (Arrancar el próximo chat directo por el paso 2.)
 2. **Instalar git + Docker:** `apt-get update -y && apt-get install -y git && curl -fsSL https://get.docker.com | sh`.
 3. **Clonar rama oracle:** `git clone -b oracle https://github.com/juanzeballos/finanzasPersonales.git /opt/gastos`.
 4. **Crear `/opt/gastos/.env`** (sin CRLF) con:
