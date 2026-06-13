@@ -11,6 +11,7 @@ const TIPOS = [
   { key: "necesario", label: "Necesario", hint: "indispensable pero variable" },
   { key: "prescindible", label: "Prescindible", hint: "podrías recortarlo" },
 ];
+const CATEGORIAS = ["Supermercado","Comida y delivery","Restaurante","Café","Transporte","Nafta","Servicios","Impuestos","Alquiler","Salud","Educación","Gimnasio","Entretenimiento","Ropa","Hogar","Suscripciones","Viajes","Otros"];
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const THEME_KEY = "gastos-theme-v1";
 const DIVISA_KEY = "gastos-divisa-v1";
@@ -93,6 +94,7 @@ const state = {
   authError: null,         // error del backend (credenciales, etc.)
   authErrors: {},          // errores de validación por campo
   menuOpen: false,         // menú desplegable de la marca (tema + salir)
+  editLibre: new Set(),
 };
 let pollTimer = null;      // timer del sondeo (polling)
 
@@ -132,6 +134,8 @@ const postGasto = (texto, divisa) =>
   api("/gastos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto, divisa }) });
 const patchTipo = (id, tipo) =>
   api(`/gastos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo }) });
+const patchGasto = (id, campos) =>
+  api(`/gastos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(campos) });
 const deleteGasto = (id) => api(`/gastos/${id}`, { method: "DELETE" });
 const deleteEntrada = (id) => api(`/entradas/${id}`, { method: "DELETE" });
 const postInforme = (mes) => api(`/informe?mes=${mes}`, { method: "POST" });
@@ -236,6 +240,7 @@ function renderAuth() {
 
 function cardHTML(e) {
   const abierto = state.open.has(e.id);
+  const enLibre = state.editLibre.has(e.id) || !CATEGORIAS.includes(e.categoria);
   const pills = TIPOS.map((t) => {
     const activo = e.tipo === t.key;
     return `<button class="type-pill t-${t.key} ${activo ? "active" : ""}" data-action="set-type" data-id="${e.id}" data-tipo="${t.key}">${t.label}</button>`;
@@ -257,6 +262,17 @@ function cardHTML(e) {
       ${abierto ? `
       <div class="card-foot">
         <div class="type-pills">${pills}</div>
+        <div class="edit-row">
+          <input class="edit-monto num" type="number" step="0.01" min="0" value="${e.monto}" data-id="${e.id}" />
+          <select class="edit-divisa" data-id="${e.id}">
+            ${CUR_LIST.map((d) => `<option value="${d}" ${d === e.divisa ? "selected" : ""}>${d}</option>`).join("")}
+          </select>
+          <select class="edit-cat" data-id="${e.id}">
+            ${CATEGORIAS.map((c) => `<option value="${esc(c)}" ${(!enLibre && c === e.categoria) ? "selected" : ""}>${esc(c)}</option>`).join("")}
+            <option value="__otra__" ${enLibre ? "selected" : ""}>Otra…</option>
+          </select>
+          ${enLibre ? `<input class="edit-cat-libre" value="${esc(CATEGORIAS.includes(e.categoria) ? "" : e.categoria)}" data-id="${e.id}" placeholder="Categoría propia" />` : ""}
+        </div>
         <button class="icon-btn" data-action="del" data-id="${e.id}" title="Eliminar">${icon("trash", 15)}</button>
       </div>` : ""}
     </div>`;
@@ -475,6 +491,15 @@ async function enviar() {
   asegurarPolling();  // empezar a sondear para ver cuándo se clasifica
 }
 
+async function editarGasto(id, campos) {
+  try {
+    const upd = await patchGasto(id, campos);
+    const i = state.expenses.findIndex((e) => e.id === id);
+    if (i >= 0) state.expenses[i] = upd;
+  } catch (e) { state.error = e.message || "No pude guardar el cambio."; }
+  render();
+}
+
 async function setTipo(id, tipo) {
   try {
     const upd = await patchTipo(id, tipo);
@@ -648,6 +673,28 @@ document.addEventListener("input", (ev) => {
   else if (id === "auth-password") state.auth.password = ev.target.value;
   else if (id === "auth-confirm") state.auth.confirm = ev.target.value;
 });
+
+document.addEventListener("change", (ev) => {
+  const t = ev.target;
+  const id = t.dataset.id ? Number(t.dataset.id) : null;
+  if (t.classList.contains("edit-divisa")) editarGasto(id, { divisa: t.value });
+  else if (t.classList.contains("edit-cat")) {
+    if (t.value === "__otra__") { state.editLibre.add(id); render(); }
+    else { state.editLibre.delete(id); editarGasto(id, { categoria: t.value }); }
+  }
+});
+
+document.addEventListener("blur", (ev) => {
+  const t = ev.target;
+  const id = t.dataset.id ? Number(t.dataset.id) : null;
+  if (t.classList.contains("edit-monto")) {
+    const v = parseFloat(t.value);
+    if (v > 0 && v !== state.expenses.find((e) => e.id === id)?.monto) editarGasto(id, { monto: v });
+  } else if (t.classList.contains("edit-cat-libre")) {
+    const v = t.value.trim();
+    if (v) { state.editLibre.delete(id); editarGasto(id, { categoria: v }); }
+  }
+}, true);
 
 // ============================================================
 //  Init
