@@ -38,7 +38,8 @@ Detalle completo del código y la teoría en `doc/01..04`.
 - Hetzner cobra **por hora** (borrar/recrear cuesta centavos).
 
 ## 5. Deploy en la VM — ✅ HECHO (2026-06-13)
-**La app está viva en https://135.181.34.126.sslip.io** (HTTPS con cert Let's Encrypt OK).
+**La app está viva en https://gastos-ia.duckdns.org** (HTTPS con cert Let's Encrypt OK).
+(También responde por la URL vieja `135.181.34.126.sslip.io`, pero ya no se usa.)
 Todos los pasos quedaron completados:
 1. ✅ **SSH verificado** — `ssh -i $HOME\.ssh\hetzner -o IdentitiesOnly=yes root@135.181.34.126` entra OK.
 2. ✅ **git + Docker instalados** (Docker 29.5.3, compose v5.1.4; Ubuntu **26.04** — la VM venía con 26, no 24). git ya venía.
@@ -52,7 +53,9 @@ Todos los pasos quedaron completados:
 6. ✅ **Verificado:** `curl https://135.181.34.126.sslip.io/ping` → `{"status":"ok"}` (HTTP 200, cert al primer intento).
 7. ✅ **End-to-end probado:** registro + login (cookie JWT) + POST `/gastos` "cafe 1500 y uber 3200" → el worker lo clasificó con **Groq** (Transporte $3200 / Comida y delivery $1500) y se persistió en Postgres. **El usuario de test (`test-deploy@example.com`) y sus datos se borraron de la base** (incluida `clasificacion_aprendida`, que tiene FK al usuario) → base limpia (0 filas en todas las tablas).
 
-> **Falta solo lo manual del navegador:** entrar a https://135.181.34.126.sslip.io, registrar tu cuenta real e instalar la PWA desde `/download`.
+8. ✅ **Dominio lindo (DuckDNS):** se creó `gastos-ia.duckdns.org` apuntando a `135.181.34.126`, se cambió `DOMINIO` en el `.env` y se recreó Caddy (`docker compose up -d`) → reemitió el cert solo. `https://gastos-ia.duckdns.org/ping` → 200 OK.
+
+> **Falta solo lo manual del navegador:** entrar a https://gastos-ia.duckdns.org, registrar tu cuenta real e instalar la PWA desde `/download`.
 
 > Notas: Hetzner Ubuntu no tiene el doble-firewall de Oracle (puertos abiertos por defecto). La imagen
 > es x86 (CX22). `create_all` arma el esquema en Postgres al arrancar. El worker corre como hilo dentro de la app.
@@ -60,12 +63,12 @@ Todos los pasos quedaron completados:
 ## 6. Decisiones clave (para no re-discutir)
 - **IA:** Groq (gratis), proveedor **conmutable** por `IA_PROVIDER` (`groq`/`deepseek`/`ollama`). Key en var de entorno.
 - **DB:** Postgres en la VM (Docker) para multiusuario; SQLite sigue para dev local (el código soporta ambos).
-- **HTTPS:** Caddy + **sslip.io** (`<ip>.sslip.io`) → cero config DNS. Se puede pasar a DuckDNS/dominio propio después (cambiar `DOMINIO` en `.env` + DNS).
+- **HTTPS:** Caddy + **DuckDNS** (`gastos-ia.duckdns.org`, gratis). Para cambiar de dominio: apuntar el nuevo nombre a `135.181.34.126`, editar `DOMINIO` en `/opt/gastos/.env` y `docker compose up -d` (Caddy reemite el cert solo).
 - **Rutas:** `/` = app/login · `/download` = landing PWA (botones instalar Android/iOS) · `/app` redirige a `/`. `manifest start_url=/`.
 - **Login:** JWT en cookie HttpOnly + bcrypt. Registro abierto.
 
 ## 7. Pendientes a futuro (post-deploy)
-- Cambiar `DOMINIO` a uno propio/DuckDNS si se quiere URL más linda (editar `.env` + `docker compose up -d` para que Caddy reemita el cert).
+- ✅ ~~Dominio lindo~~ → ya está en `gastos-ia.duckdns.org`.
 - Backups de la base (Postgres) si se vuelve serio (el volumen `gastos_pgdata` tiene los datos).
 - Ya andando en Hetzner: mergear `oracle` → `main` (o renombrar) para que sea la rama principal.
 - Apagar Fly del todo si todavía quedaba algo corriendo (ya no se usa).
