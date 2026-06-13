@@ -1,4 +1,4 @@
-from app import schemas
+from app import models, schemas
 
 
 def test_gastotexto_divisa_default():
@@ -14,9 +14,10 @@ def test_categorias_incluye_restaurante():
     assert "Restaurante" in schemas.CATEGORIAS
 
 
-def test_post_gasto_guarda_divisa_en_entrada(auth_client):
+def test_post_gasto_guarda_divisa_en_entrada(auth_client, Session):
     r = auth_client.post("/gastos", json={"texto": "hotel 120", "divisa": "USD"})
     assert r.status_code == 200, r.text
-    # la entrada queda pendiente; la leemos por /entradas
-    entradas = auth_client.get("/entradas").json()
-    assert entradas[-1]["estado"] == "pendiente"
+    db = Session()
+    entrada = db.query(models.Entrada).order_by(models.Entrada.id.desc()).first()
+    assert entrada.estado == "pendiente"
+    assert entrada.divisa == "USD"
