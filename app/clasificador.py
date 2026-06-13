@@ -10,7 +10,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from . import ia, models, schemas
-from .parsing import extraer_montos, normalizar
+from .parsing import detectar_divisa, extraer_montos, normalizar
 
 
 def normalizar_tipo(tipo: str) -> str:
@@ -59,11 +59,13 @@ def _buscar_concepto_en_texto(db: Session, usuario_id: int, texto: str):
     return max(candidatos, key=lambda f: len(f.concepto)) if candidatos else None
 
 
-def procesar_texto(db: Session, texto: str, usuario_id: int) -> dict:
+def procesar_texto(db: Session, texto: str, usuario_id: int, divisa_chip: str = "ARS") -> dict:
     """Clasifica el texto y agrega el/los Gasto(s) del usuario a la sesión (sin commit).
 
+    La divisa = mención explícita en el texto, si la hay; si no, la del chip.
     Devuelve {"created": [Gasto], "missing": [str]}. Puede lanzar excepción si la IA falla.
     """
+    divisa = detectar_divisa(texto) or divisa_chip
     # --- 1) Atajo: concepto conocido + un único monto detectable -> sin IA ---
     montos = extraer_montos(texto)
     if len(montos) == 1:
@@ -72,6 +74,7 @@ def procesar_texto(db: Session, texto: str, usuario_id: int) -> dict:
             gasto = models.Gasto(
                 usuario_id=usuario_id, fecha=date.today(), descripcion=fila.descripcion,
                 monto=montos[0], categoria=fila.categoria, tipo=fila.tipo, emoji=fila.emoji,
+                divisa=divisa,
             )
             db.add(gasto)
             fila.usos += 1
@@ -97,6 +100,7 @@ def procesar_texto(db: Session, texto: str, usuario_id: int) -> dict:
         gasto = models.Gasto(
             usuario_id=usuario_id, fecha=date.today(), descripcion=descripcion,
             monto=float(item.amount), categoria=categoria, tipo=tipo, emoji=emoji,
+            divisa=divisa,
         )
         db.add(gasto)
         creados.append(gasto)
