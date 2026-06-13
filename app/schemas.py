@@ -11,9 +11,9 @@ from pydantic import BaseModel, Field
 # Categorías sugeridas (la IA puede crear otra si hace falta). Un único lugar de verdad,
 # usado también por el prompt de clasificación.
 CATEGORIAS = [
-    "Supermercado", "Comida y delivery", "Transporte", "Nafta", "Servicios",
-    "Impuestos", "Alquiler", "Salud", "Educación", "Gimnasio",
-    "Entretenimiento", "Ropa", "Hogar", "Suscripciones", "Otros",
+    "Supermercado", "Comida y delivery", "Restaurante", "Café", "Transporte", "Nafta",
+    "Servicios", "Impuestos", "Alquiler", "Salud", "Educación", "Gimnasio",
+    "Entretenimiento", "Ropa", "Hogar", "Suscripciones", "Viajes", "Otros",
 ]
 
 # El orden importa: de "sin control" a "todo el control".
@@ -23,6 +23,7 @@ TIPOS = ["fijo", "necesario", "prescindible"]
 class GastoTexto(BaseModel):
     """Lo que manda el chat: texto libre (puede tener varios gastos)."""
     texto: str
+    divisa: str = "ARS"   # divisa elegida en el chip (el texto puede pisarla)
 
 
 class ItemIA(BaseModel):
@@ -40,9 +41,16 @@ class ClasificacionIA(BaseModel):
     missing: list[str] = []
 
 
-class TipoUpdate(BaseModel):
-    """Body del PATCH para reclasificar el tipo de un gasto."""
-    tipo: str
+class GastoUpdate(BaseModel):
+    """Body del PATCH: cualquier subconjunto de campos editables."""
+    monto: float | None = None
+    categoria: str | None = None
+    tipo: str | None = None
+    divisa: str | None = None
+
+
+# Alias de compatibilidad hacia atrás — el router lo usa hasta que la tarea siguiente lo migre.
+TipoUpdate = GastoUpdate
 
 
 class GastoOut(BaseModel):
@@ -53,6 +61,7 @@ class GastoOut(BaseModel):
     monto: float
     categoria: str
     tipo: str
+    divisa: str
     emoji: str
     creado_en: datetime
 
