@@ -98,6 +98,8 @@ const state = {
   divisaMes: "ARS",
 };
 let pollTimer = null;      // timer del sondeo (polling)
+let renderedTab = null;    // qué pestaña está pintada en el DOM ahora mismo
+const scrollPos = {};      // scrollTop recordado por pestaña (para no saltar al tope al re-render)
 
 // Anti-parpadeo: solo re-renderizamos si los datos realmente cambiaron.
 let ultimoSnapshot = "";
@@ -440,10 +442,17 @@ function render() {
   const inputFocused = active && active.id === "composer-input";
   const caret = inputFocused ? active.selectionStart : null;
 
+  // Guardar la posición de scroll de la vista pintada AHORA (antes de reemplazar el DOM),
+  // para que re-renderizar (ej: editar un gasto en "El mes") no salte al principio.
+  const scPrev = document.querySelector(".scroll");
+  if (scPrev && renderedTab) scrollPos[renderedTab] = scPrev.scrollTop;
+
   renderHeader();
   document.getElementById("view").innerHTML =
     state.tab === "registrar" ? renderRegistrar() : renderMes();
+  renderedTab = state.tab;
 
+  const sc = document.querySelector(".scroll");
   if (state.tab === "registrar") {
     const input = document.getElementById("composer-input");
     if (input && (inputFocused || state.focusInput)) {
@@ -451,8 +460,9 @@ function render() {
       const pos = caret ?? input.value.length;
       input.setSelectionRange(pos, pos);
     }
-    const sc = document.getElementById("scroll");
-    if (sc) sc.scrollTop = sc.scrollHeight;
+    if (sc) sc.scrollTop = sc.scrollHeight;          // chat: siempre al fondo
+  } else if (sc) {
+    sc.scrollTop = scrollPos[state.tab] || 0;        // "El mes": mantener el lugar (0 al entrar)
   }
   state.focusInput = false;
   ultimoSnapshot = snapshot();  // dejamos registrado lo que se acaba de pintar
