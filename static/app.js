@@ -13,6 +13,7 @@ const TIPOS = [
 ];
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const THEME_KEY = "gastos-theme-v1";
+const DIVISA_KEY = "gastos-divisa-v1";
 
 // ---------- Iconos (SVG inline, estilo lucide) ----------
 const P = {
@@ -81,6 +82,8 @@ const state = {
   consejo: null,
   consejoLoading: false,
   open: new Set(),
+  divisa: "ARS",
+  divisaOpen: false,
   // --- autenticación ---
   usuario: null,           // null = no logueado; {id, email, nombre} = logueado
   authModo: "login",       // "login" | "registro"
@@ -125,8 +128,8 @@ async function api(url, opts) {
 }
 const cargarGastos = () => api("/gastos");
 const cargarEntradas = () => api("/entradas");
-const postGasto = (texto) =>
-  api("/gastos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto }) });
+const postGasto = (texto, divisa) =>
+  api("/gastos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto, divisa }) });
 const patchTipo = (id, tipo) =>
   api(`/gastos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo }) });
 const deleteGasto = (id) => api(`/gastos/${id}`, { method: "DELETE" });
@@ -294,7 +297,15 @@ function renderRegistrar() {
         state.error ? `<div class="aviso error pop">${icon("alert", 15)}<span>${esc(state.error)}</span></div>` : "",
       ].join("");
 
-  return `
+  const chip = `
+    <div class="divisa-bar">
+      <button class="divisa-chip ${state.divisaOpen ? "open" : ""}" data-action="divisa-toggle">${state.divisa}</button>
+      ${state.divisaOpen ? `<div class="divisa-pop">
+        ${CUR_LIST.map((d) => `<button class="divisa-opt ${d === state.divisa ? "active" : ""}" data-action="divisa-set" data-divisa="${d}">${d}</button>`).join("")}
+      </div>` : ""}
+    </div>`;
+
+  return `${chip}
     <div class="scroll" id="scroll">${chat}</div>
     <div class="composer">
       ${hoy.length > 0 ? `<div class="total-line"><span class="lbl">Hoy llevás</span><span class="num" style="font-weight:600">${totalHoyStr}</span></div>` : ""}
@@ -455,7 +466,7 @@ async function enviar() {
   state.error = null;
   state.focusInput = true;
   try {
-    const entrada = await postGasto(texto);   // responde al instante (pendiente)
+    const entrada = await postGasto(texto, state.divisa);   // responde al instante (pendiente)
     state.entradas.push(entrada);
   } catch (e) {
     state.error = "No pude guardar el gasto. ¿Está el servidor corriendo?";
@@ -503,6 +514,13 @@ async function pedirConsejo() {
     state.consejoLoading = false;
     render();
   }
+}
+
+function setDivisa(d) {
+  state.divisa = d;
+  state.divisaOpen = false;
+  try { localStorage.setItem(DIVISA_KEY, d); } catch (e) {}
+  render();
 }
 
 function setTheme(dark) {
@@ -599,6 +617,8 @@ document.addEventListener("click", (ev) => {
     render();
   }
   else if (a === "toggle-pw") { state.showPw = !state.showPw; render(); }
+  else if (a === "divisa-toggle") { state.divisaOpen = !state.divisaOpen; render(); }
+  else if (a === "divisa-set") { setDivisa(el.dataset.divisa); }
 });
 
 // Cerrar el menú de la marca al hacer clic afuera (no sobre el menú ni la marca)
@@ -640,6 +660,11 @@ document.addEventListener("input", (ev) => {
     else if (window.matchMedia) dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   } catch (e) {}
   setTheme(dark);
+
+  try {
+    const sd = localStorage.getItem(DIVISA_KEY);
+    if (sd && CUR_LIST.includes(sd)) state.divisa = sd;
+  } catch (e) {}
 
   // ¿Hay sesión activa? (la cookie viaja sola). Si sí, cargamos sus datos; si no, login.
   try {
