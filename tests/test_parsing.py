@@ -15,6 +15,10 @@ from app.parsing import detectar_divisa
     ("café 1500", None),
     ("8 lucas de super", None),
     ("algo doloroso", None),   # no debe confundir 'dolor' con 'dolar'
+    ("gastos reales del mes", None),
+    ("compras reales", None),
+    ("3 dólares", "USD"),
+    ("pagué 200 reales", "BRL"),
 ])
 def test_detectar_divisa(texto, esperado):
     assert detectar_divisa(texto) == esperado

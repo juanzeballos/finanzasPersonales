@@ -47,18 +47,32 @@ def extraer_montos(texto: str) -> list[float]:
     return montos
 
 
-# Monedas explícitas en el texto. El orden no importa (no se solapan).
-# Símbolos ($,€) y abreviaturas no llevan \b porque $ y € no son caracteres de palabra.
-_DIVISAS = [
-    ("USD", re.compile(r"(?<![a-z])(usd|u\$s|us\$|d[oó]lares?)(?![a-z])", re.IGNORECASE)),
-    ("EUR", re.compile(r"(?<![a-z])(eur|euros?)(?![a-z])|€", re.IGNORECASE)),
-    ("BRL", re.compile(r"(?<![a-z])(brl|reales?)(?![a-z])|r\$", re.IGNORECASE)),
+# Tokens inequívocos (abreviaturas y símbolos): alcanza con que aparezcan.
+_DIVISA_TOKEN = [
+    ("USD", re.compile(r"(?<![a-z])(usd|u\$s|us\$)(?![a-z])", re.IGNORECASE)),
+    ("EUR", re.compile(r"(?<![a-z])eur(?![a-z])|€", re.IGNORECASE)),
+    ("BRL", re.compile(r"(?<![a-z])brl(?![a-z])|r\$", re.IGNORECASE)),
+]
+# Palabras ambiguas (dólares/euros/reales): SOLO cuentan si están pegadas a un número,
+# para no confundir "gastos reales" o "compras reales" con la moneda.
+_DIVISA_PALABRA = [
+    ("USD", re.compile(r"\d\s*d[oó]lares?\b", re.IGNORECASE)),
+    ("EUR", re.compile(r"\d\s*euros?\b", re.IGNORECASE)),
+    ("BRL", re.compile(r"\d\s*(?:reales?|reais)\b", re.IGNORECASE)),
 ]
 
 
 def detectar_divisa(texto: str) -> str | None:
-    """Devuelve la moneda explícita mencionada en el texto, o None si no hay ninguna."""
-    for codigo, patron in _DIVISAS:
+    """Devuelve la moneda explícita mencionada en el texto, o None si no hay ninguna.
+
+    Las abreviaturas/símbolos (usd, u$s, €, r$, …) matchean en cualquier lado; las palabras
+    en español (dólares/euros/reales) solo si están pegadas a un número, para no confundir
+    "gastos reales" con la moneda.
+    """
+    for codigo, patron in _DIVISA_TOKEN:
+        if patron.search(texto):
+            return codigo
+    for codigo, patron in _DIVISA_PALABRA:
         if patron.search(texto):
             return codigo
     return None

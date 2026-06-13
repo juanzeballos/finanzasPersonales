@@ -639,7 +639,11 @@ document.addEventListener("click", (ev) => {
   if (a === "tab") { state.tab = el.dataset.tab; if (state.tab === "registrar") state.focusInput = true; render(); }
   else if (a === "theme") { setTheme(!state.dark); render(); }
   else if (a === "send") { enviar(); }
-  else if (a === "toggle") { state.open.has(id) ? state.open.delete(id) : state.open.add(id); render(); }
+  else if (a === "toggle") {
+    if (state.open.has(id)) { state.open.delete(id); state.editLibre.delete(id); }
+    else state.open.add(id);
+    render();
+  }
   else if (a === "set-type") { setTipo(id, el.dataset.tipo); }
   else if (a === "del") { borrar(id); }
   else if (a === "del-entrada") { descartarEntrada(id); }
