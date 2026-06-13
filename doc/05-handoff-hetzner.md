@@ -67,6 +67,17 @@ Todos los pasos quedaron completados:
 - **Rutas:** `/` = app/login · `/download` = landing PWA (botones instalar Android/iOS) · `/app` redirige a `/`. `manifest start_url=/`.
 - **Login:** JWT en cookie HttpOnly + bcrypt. Registro abierto.
 
+## 6b. Deploy features divisas + edición + falta_monto (2026-06-13)
+Se deployaron 3 features (spec/plan en `docs/superpowers/`): **editar monto/categoría/divisa** de un gasto, **multi-divisa** (chip ARS/USD/BRL/EUR en Registrar, override por texto), y **aviso amable cuando falta el monto**. Suite de tests nueva: `pytest` (29 passed). Verificado end-to-end en prod.
+
+**Migración (imprescindible al deployar contra una base existente):** `create_all` NO agrega columnas a tablas ya creadas. Antes del `up`:
+```
+docker compose exec -T db psql -U gastos -d gastos -c "ALTER TABLE gastos ADD COLUMN IF NOT EXISTS divisa VARCHAR NOT NULL DEFAULT 'ARS';" -c "ALTER TABLE entradas ADD COLUMN IF NOT EXISTS divisa VARCHAR NOT NULL DEFAULT 'ARS';"
+```
+Procedimiento de deploy: `git push origin oracle` → en server `cd /opt/gastos && git pull && <ALTER de arriba> && docker compose up -d --build`.
+
+**⚠️ Incidencia del `.env` (resuelta):** el `/opt/gastos/.env` estaba corrupto (todo en una línea, separadores `n` literales, secretos de un intento viejo) — quedó así de la creación inicial por PowerShell. La app no se cayó hasta que un `docker compose up` recreó los contenedores y `web` no pudo conectar a Postgres (`no password supplied`). Se reescribió el `.env` limpio (4 líneas, LF, sin BOM, `DOMINIO=gastos-ia.duckdns.org`) y se **alineó el password del rol** con `ALTER USER gastos WITH PASSWORD '...'` (preserva todos los datos). Los datos quedaron intactos (6 usuarios). **Se regeneró `SECRET_KEY`**, así que las sesiones viejas se invalidaron: hay que **re-loguearse una vez**. Lección: NO escribir el `.env` pipeando strings de PowerShell a `ssh` (mete BOM/CRLF/`\n` literal); generarlo en el server con `printf` o copiar un script por `scp`.
+
 ## 7. Pendientes a futuro (post-deploy)
 - ✅ ~~Dominio lindo~~ → ya está en `gastos-ia.duckdns.org`.
 - Backups de la base (Postgres) si se vuelve serio (el volumen `gastos_pgdata` tiene los datos).
