@@ -1,3 +1,5 @@
+from datetime import date
+
 from app import models, schemas
 
 
@@ -21,3 +23,49 @@ def test_post_gasto_guarda_divisa_en_entrada(auth_client, Session):
     entrada = db.query(models.Entrada).order_by(models.Entrada.id.desc()).first()
     assert entrada.estado == "pendiente"
     assert entrada.divisa == "USD"
+
+
+def _crear_gasto(Session, usuario_id, **kw):
+    db = Session()
+    defaults = dict(usuario_id=usuario_id, fecha=date.today(), descripcion="Café",
+                    monto=1500, categoria="Café", tipo="prescindible", emoji="☕", divisa="ARS")
+    defaults.update(kw)
+    g = models.Gasto(**defaults)
+    db.add(g)
+    db.commit()
+    db.refresh(g)
+    return g.id
+
+
+def _uid(auth_client):
+    return auth_client.get("/yo").json()["id"]
+
+
+def test_patch_edita_monto_categoria_divisa(auth_client, Session):
+    gid = _crear_gasto(Session, _uid(auth_client))
+    r = auth_client.patch(f"/gastos/{gid}", json={"monto": 2000, "categoria": "Restaurante", "divisa": "USD"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["monto"] == 2000
+    assert body["categoria"] == "Restaurante"
+    assert body["divisa"] == "USD"
+
+
+def test_patch_monto_invalido(auth_client, Session):
+    gid = _crear_gasto(Session, _uid(auth_client))
+    r = auth_client.patch(f"/gastos/{gid}", json={"monto": 0})
+    assert r.status_code == 400
+
+
+def test_patch_divisa_invalida(auth_client, Session):
+    gid = _crear_gasto(Session, _uid(auth_client))
+    r = auth_client.patch(f"/gastos/{gid}", json={"divisa": "GBP"})
+    assert r.status_code == 400
+
+
+def test_patch_categoria_aprende(auth_client, Session):
+    gid = _crear_gasto(Session, _uid(auth_client))
+    auth_client.patch(f"/gastos/{gid}", json={"categoria": "Restaurante"})
+    db = Session()
+    fila = db.query(models.ClasificacionAprendida).filter_by(usuario_id=_uid(auth_client), concepto="cafe").first()
+    assert fila is not None and fila.categoria == "Restaurante"

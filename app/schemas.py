@@ -49,9 +49,6 @@ class GastoUpdate(BaseModel):
     divisa: str | None = None
 
 
-# Alias de compatibilidad hacia atrás — el router lo usa hasta que la tarea siguiente lo migre.
-TipoUpdate = GastoUpdate
-
 
 class GastoOut(BaseModel):
     """Lo que la API devuelve al cliente."""

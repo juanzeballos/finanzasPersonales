@@ -15,6 +15,8 @@ from ..database import get_db
 
 router = APIRouter()
 
+DIVISAS = {"ARS", "USD", "BRL", "EUR"}
+
 
 def rango_mes(mes: str) -> tuple[date, date]:
     """'YYYY-MM' -> (primer día del mes, primer día del mes siguiente).
@@ -103,13 +105,34 @@ def listar_gastos(mes: str | None = Query(default=None), db: Session = Depends(g
 
 
 @router.patch("/gastos/{gasto_id}", response_model=schemas.GastoOut)
-def reclasificar_gasto(gasto_id: int, payload: schemas.TipoUpdate, db: Session = Depends(get_db),
-                       usuario: models.Usuario = Depends(usuario_actual)):
+def editar_gasto(gasto_id: int, payload: schemas.GastoUpdate, db: Session = Depends(get_db),
+                 usuario: models.Usuario = Depends(usuario_actual)):
+    """Edita un gasto: monto, categoría, tipo y/o divisa (cualquier subconjunto)."""
     gasto = db.get(models.Gasto, gasto_id)
     if not gasto or gasto.usuario_id != usuario.id:
         raise HTTPException(status_code=404, detail="Gasto no encontrado")
-    gasto.tipo = normalizar_tipo(payload.tipo)
-    aprender(db, usuario.id, gasto.descripcion, gasto.categoria, gasto.tipo, gasto.emoji)
+
+    cambio_clasificacion = False
+    if payload.monto is not None:
+        if payload.monto <= 0:
+            raise HTTPException(status_code=400, detail="El monto tiene que ser mayor a 0")
+        gasto.monto = payload.monto
+    if payload.categoria is not None:
+        cat = payload.categoria.strip()
+        if not cat:
+            raise HTTPException(status_code=400, detail="La categoría no puede estar vacía")
+        gasto.categoria = cat
+        cambio_clasificacion = True
+    if payload.tipo is not None:
+        gasto.tipo = normalizar_tipo(payload.tipo)
+        cambio_clasificacion = True
+    if payload.divisa is not None:
+        if payload.divisa not in DIVISAS:
+            raise HTTPException(status_code=400, detail="Divisa no soportada")
+        gasto.divisa = payload.divisa
+
+    if cambio_clasificacion:
+        aprender(db, usuario.id, gasto.descripcion, gasto.categoria, gasto.tipo, gasto.emoji)
     db.commit()
     db.refresh(gasto)
     return gasto
