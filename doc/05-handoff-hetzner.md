@@ -37,18 +37,22 @@ Detalle completo del código y la teoría en `doc/01..04`.
   - ⚠️ La VM nueva debe tener cargada la **pública `gastos-hetzner`** (el server anterior fallaba con "Permission denied" justamente por no tenerla).
 - Hetzner cobra **por hora** (borrar/recrear cuesta centavos).
 
-## 5. Lo que FALTA hacer (deploy en la VM, por SSH desde la PC)
-1. ✅ **SSH verificado** — `ssh -i $HOME\.ssh\hetzner -o IdentitiesOnly=yes root@135.181.34.126` entra OK con la clave. (Arrancar el próximo chat directo por el paso 2.)
-2. **Instalar git + Docker:** `apt-get update -y && apt-get install -y git && curl -fsSL https://get.docker.com | sh`.
-3. **Clonar rama oracle:** `git clone -b oracle https://github.com/juanzeballos/finanzasPersonales.git /opt/gastos`.
-4. **Crear `/opt/gastos/.env`** (sin CRLF) con:
-   - `DOMINIO=135.181.34.126.sslip.io`  ← **sslip.io** = HTTPS sin necesidad de DuckDNS ni dominio propio (apunta solo a esa IP; Caddy le saca el cert Let's Encrypt).
-   - `POSTGRES_PASSWORD=` (generar aleatoria, URL-safe).
-   - `GROQ_API_KEY=` (está en la **variable de entorno User `GROQ_API_KEY`** de la PC: `[Environment]::GetEnvironmentVariable("GROQ_API_KEY","User")`).
-   - `SECRET_KEY=` (generar aleatoria larga).
-5. **Levantar:** `cd /opt/gastos && docker compose up -d --build`.
-6. **Verificar:** `docker compose ps`; esperar ~30s el cert y `curl https://135.181.34.126.sslip.io/ping` → `{"status":"ok"}`. Revisar `docker compose logs caddy` si el HTTPS no sale (rate limit de sslip.io es el único riesgo).
-7. **Probar end-to-end:** entrar a `https://135.181.34.126.sslip.io`, registrarse, cargar un gasto, ver que clasifica (Groq) y aparece. Instalar la PWA.
+## 5. Deploy en la VM — ✅ HECHO (2026-06-13)
+**La app está viva en https://135.181.34.126.sslip.io** (HTTPS con cert Let's Encrypt OK).
+Todos los pasos quedaron completados:
+1. ✅ **SSH verificado** — `ssh -i $HOME\.ssh\hetzner -o IdentitiesOnly=yes root@135.181.34.126` entra OK.
+2. ✅ **git + Docker instalados** (Docker 29.5.3, compose v5.1.4; Ubuntu **26.04** — la VM venía con 26, no 24). git ya venía.
+3. ✅ **Rama oracle clonada** en `/opt/gastos`.
+4. ✅ **`/opt/gastos/.env` creado** (LF, sin BOM/CRLF — se generó en el server con `printf` + `openssl rand -hex`):
+   - `DOMINIO=135.181.34.126.sslip.io` (sslip.io → HTTPS sin DNS propio).
+   - `POSTGRES_PASSWORD` = 48 hex aleatorios; `SECRET_KEY` = 96 hex aleatorios.
+   - `GROQ_API_KEY` copiada desde la var de entorno User de la PC (pasada por stdin con encoding ASCII para no colar BOM).
+   - ⚠️ Si hay que pasar el `.env` por PowerShell, **no** pipear strings directo a `ssh` (mete BOM/CRLF y se comen las comillas): generar en el server o copiar un script por `scp` (UTF8 sin BOM, LF).
+5. ✅ **Levantado:** `docker compose up -d --build` — 3 contenedores `Up` (db healthy, web, caddy con restart `unless-stopped` → sobreviven reboot).
+6. ✅ **Verificado:** `curl https://135.181.34.126.sslip.io/ping` → `{"status":"ok"}` (HTTP 200, cert al primer intento).
+7. ✅ **End-to-end probado:** registro + login (cookie JWT) + POST `/gastos` "cafe 1500 y uber 3200" → el worker lo clasificó con **Groq** (Transporte $3200 / Comida y delivery $1500) y se persistió en Postgres. **El usuario de test (`test-deploy@example.com`) y sus datos se borraron de la base** (incluida `clasificacion_aprendida`, que tiene FK al usuario) → base limpia (0 filas en todas las tablas).
+
+> **Falta solo lo manual del navegador:** entrar a https://135.181.34.126.sslip.io, registrar tu cuenta real e instalar la PWA desde `/download`.
 
 > Notas: Hetzner Ubuntu no tiene el doble-firewall de Oracle (puertos abiertos por defecto). La imagen
 > es x86 (CX22). `create_all` arma el esquema en Postgres al arrancar. El worker corre como hilo dentro de la app.
@@ -61,6 +65,7 @@ Detalle completo del código y la teoría en `doc/01..04`.
 - **Login:** JWT en cookie HttpOnly + bcrypt. Registro abierto.
 
 ## 7. Pendientes a futuro (post-deploy)
-- Cambiar `DOMINIO` a uno propio/DuckDNS si se quiere URL más linda.
-- Backups de la base (Postgres) si se vuelve serio.
-- Cuando esté andando en Hetzner, mergear `oracle` → `main` (o renombrar) para que sea la rama principal.
+- Cambiar `DOMINIO` a uno propio/DuckDNS si se quiere URL más linda (editar `.env` + `docker compose up -d` para que Caddy reemita el cert).
+- Backups de la base (Postgres) si se vuelve serio (el volumen `gastos_pgdata` tiene los datos).
+- Ya andando en Hetzner: mergear `oracle` → `main` (o renombrar) para que sea la rama principal.
+- Apagar Fly del todo si todavía quedaba algo corriendo (ya no se usa).
