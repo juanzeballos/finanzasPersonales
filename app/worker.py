@@ -21,13 +21,14 @@ def _procesar_una(db, entrada_id: int) -> None:
     if not entrada or entrada.estado != "pendiente":
         return
     try:
-        res = procesar_texto(db, entrada.texto, entrada.usuario_id)
-        if res["created"]:
+        res = procesar_texto(db, entrada.texto, entrada.usuario_id, entrada.divisa)
+        if res["missing"]:
+            faltan = ", ".join(f"«{m}»" for m in res["missing"])
+            entrada.estado = "falta_monto"
+            entrada.error = f"Te faltó el monto de {faltan}. Reescribilo con el importe, ej. «café 1500»."
+        elif res["created"]:
             entrada.estado = "procesado"
             entrada.error = None
-        elif res["missing"]:
-            entrada.estado = "error"
-            entrada.error = " ".join(res["missing"])
         else:
             entrada.estado = "error"
             entrada.error = "No pude leer ningún gasto ahí."
