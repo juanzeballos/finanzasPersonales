@@ -45,3 +45,20 @@ def extraer_montos(texto: str) -> list[float]:
             valor *= _UNIDADES[unidad.lower()]
         montos.append(valor)
     return montos
+
+
+# Monedas explícitas en el texto. El orden no importa (no se solapan).
+# Símbolos ($,€) y abreviaturas no llevan \b porque $ y € no son caracteres de palabra.
+_DIVISAS = [
+    ("USD", re.compile(r"(?<![a-z])(usd|u\$s|us\$|d[oó]lares?)(?![a-z])", re.IGNORECASE)),
+    ("EUR", re.compile(r"(?<![a-z])(eur|euros?)(?![a-z])|€", re.IGNORECASE)),
+    ("BRL", re.compile(r"(?<![a-z])(brl|reales?)(?![a-z])|r\$", re.IGNORECASE)),
+]
+
+
+def detectar_divisa(texto: str) -> str | None:
+    """Devuelve la moneda explícita mencionada en el texto, o None si no hay ninguna."""
+    for codigo, patron in _DIVISAS:
+        if patron.search(texto):
+            return codigo
+    return None
