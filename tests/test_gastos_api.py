@@ -69,3 +69,17 @@ def test_patch_categoria_aprende(auth_client, Session):
     db = Session()
     fila = db.query(models.ClasificacionAprendida).filter_by(usuario_id=_uid(auth_client), concepto="cafe").first()
     assert fila is not None and fila.categoria == "Restaurante"
+
+
+def test_resumen_filtra_por_divisa(auth_client, Session):
+    uid = _uid(auth_client)
+    hoy = date.today()
+    mes = hoy.strftime("%Y-%m")
+    _crear_gasto(Session, uid, monto=1000, divisa="ARS", fecha=hoy)
+    _crear_gasto(Session, uid, monto=50, divisa="USD", fecha=hoy)
+
+    ars = auth_client.get(f"/resumen?mes={mes}").json()       # default ARS
+    usd = auth_client.get(f"/resumen?mes={mes}&divisa=USD").json()
+    assert ars["total"] == 1000
+    assert usd["total"] == 50
+    assert set(ars["monedas"]) == {"ARS", "USD"}

@@ -30,14 +30,15 @@ def rango_mes(mes: str) -> tuple[date, date]:
     return inicio, fin
 
 
-def calcular_resumen(db: Session, mes: str, usuario_id: int) -> dict:
-    """Totales del mes por categoría y por tipo, SOLO de ese usuario."""
+def calcular_resumen(db: Session, mes: str, usuario_id: int, divisa: str = "ARS") -> dict:
+    """Totales del mes por categoría y por tipo, de ese usuario y esa divisa."""
     inicio, fin = rango_mes(mes)
-    filtro = (
+    base = (
         (models.Gasto.usuario_id == usuario_id)
         & (models.Gasto.fecha >= inicio)
         & (models.Gasto.fecha < fin)
     )
+    filtro = base & (models.Gasto.divisa == divisa)
 
     por_categoria = (
         db.query(models.Gasto.categoria, func.sum(models.Gasto.monto))
@@ -48,9 +49,12 @@ def calcular_resumen(db: Session, mes: str, usuario_id: int) -> dict:
         .filter(filtro).group_by(models.Gasto.tipo).all()
     )
     total = db.query(func.coalesce(func.sum(models.Gasto.monto), 0.0)).filter(filtro).scalar()
+    monedas = [d for (d,) in db.query(models.Gasto.divisa).filter(base).distinct().all()]
 
     return {
         "mes": mes,
+        "divisa": divisa,
+        "monedas": sorted(monedas) or ["ARS"],
         "total": round(total or 0.0, 2),
         "por_categoria": [{"categoria": c, "total": round(t, 2)} for c, t in por_categoria],
         "por_tipo": [{"tipo": tp, "total": round(t, 2)} for tp, t in por_tipo],
@@ -149,6 +153,7 @@ def borrar_gasto(gasto_id: int, db: Session = Depends(get_db),
 
 
 @router.get("/resumen")
-def resumen(mes: str = Query(..., description="Mes en formato YYYY-MM"), db: Session = Depends(get_db),
+def resumen(mes: str = Query(..., description="Mes en formato YYYY-MM"),
+            divisa: str = Query("ARS"), db: Session = Depends(get_db),
             usuario: models.Usuario = Depends(usuario_actual)):
-    return calcular_resumen(db, mes, usuario.id)
+    return calcular_resumen(db, mes, usuario.id, divisa)

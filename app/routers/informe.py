@@ -31,9 +31,10 @@ def _formatear_resumen(resumen: dict) -> str:
 
 
 @router.post("/informe")
-def generar_informe(mes: str = Query(..., description="Mes en formato YYYY-MM"), db: Session = Depends(get_db),
+def generar_informe(mes: str = Query(..., description="Mes en formato YYYY-MM"),
+                    divisa: str = Query("ARS"), db: Session = Depends(get_db),
                     usuario: models.Usuario = Depends(usuario_actual)):
-    resumen = calcular_resumen(db, mes, usuario.id)
+    resumen = calcular_resumen(db, mes, usuario.id, divisa)
     if resumen["total"] == 0:
         return {"mes": mes, "consejo": "Todavía no hay gastos cargados en este mes."}
     try:
