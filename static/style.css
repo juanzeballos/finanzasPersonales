@@ -279,3 +279,47 @@ body {
 .auth-btn:disabled { opacity: .6; cursor: default; }
 .auth-error { display: flex; align-items: center; gap: 6px; color: var(--error); font-size: 13px; }
 .auth-foot { text-align: center; font-size: 12px; color: var(--muted); margin-top: 20px; }
+
+/* --- Chip de divisa (Registrar) --- */
+.divisa-bar { position: relative; display: flex; justify-content: center; margin: 8px 0; }
+.divisa-chip {
+  font: inherit; font-weight: 700; font-size: 13px; letter-spacing: .5px;
+  padding: 5px 16px; border-radius: 999px; cursor: pointer;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--hair);
+}
+.divisa-chip.open { border-color: var(--ink); }
+.divisa-pop {
+  position: absolute; top: 110%; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 4px; padding: 5px; z-index: 10;
+  background: var(--surface); border: 1px solid var(--hair);
+  border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.12);
+}
+.divisa-opt {
+  font: inherit; font-weight: 600; font-size: 13px; padding: 5px 12px;
+  border: none; border-radius: 8px; cursor: pointer; background: transparent; color: var(--ink);
+}
+.divisa-opt.active { background: var(--ink); color: var(--on-ink); }
+
+/* --- Controles de edición en la card --- */
+.edit-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.edit-row .edit-monto { width: 110px; }
+.edit-row input, .edit-row select {
+  font: inherit; padding: 6px 8px; border-radius: 8px;
+  border: 1px solid var(--hair); background: var(--surface); color: var(--ink);
+}
+
+/* --- Aviso suave (falta_monto) --- */
+.aviso.info {
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--hair);
+}
+
+/* --- Selector de moneda en El mes --- */
+.mes-monedas { display: flex; justify-content: center; gap: 6px; margin: 8px 0; }
+.moneda-tab {
+  font: inherit; font-weight: 600; font-size: 13px; padding: 5px 14px;
+  border-radius: 999px; cursor: pointer; background: transparent; color: var(--muted);
+  border: 1px solid var(--hair);
+}
+.moneda-tab.active { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
