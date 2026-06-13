@@ -169,7 +169,7 @@ body {
 .composer .total-line .lbl { color: var(--muted); }
 .composer .row { display: flex; align-items: flex-end; gap: 8px; }
 .composer input {
-  flex: 1; padding: 12px 16px; border-radius: 16px; font-size: 14px;
+  flex: 1; padding: 12px 16px; border-radius: 16px; font-size: 16px;  /* 16px: evita el auto-zoom de iOS Safari al enfocar */
   background: var(--surface); border: 1px solid var(--hair); color: var(--ink); outline: none;
 }
 .composer input::placeholder { color: var(--muted); }
@@ -251,7 +251,7 @@ body {
 .field-box { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 12px; background: var(--bg); border: 1px solid var(--hair); }
 .field-box.field-err { border-color: var(--error); }
 .field-icon { color: var(--muted); flex-shrink: 0; }
-.field-box input { flex: 1; background: transparent; border: none; outline: none; padding: 12px 0; font-size: 14px; color: var(--ink); }
+.field-box input { flex: 1; background: transparent; border: none; outline: none; padding: 12px 0; font-size: 16px; color: var(--ink); }  /* 16px: evita el auto-zoom de iOS al enfocar */
 .field-box input::placeholder { color: var(--muted); }
 /* Evitar que el autocompletado del navegador pinte el campo de otro color */
 .field-box input:-webkit-autofill,
