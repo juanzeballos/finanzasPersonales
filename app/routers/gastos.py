@@ -61,7 +61,8 @@ def calcular_resumen(db: Session, mes: str, usuario_id: int) -> dict:
 def crear_gasto(payload: schemas.GastoTexto, db: Session = Depends(get_db),
                 usuario: models.Usuario = Depends(usuario_actual)):
     """Guarda el texto como entrada 'pendiente' del usuario y responde al instante."""
-    entrada = models.Entrada(usuario_id=usuario.id, texto=payload.texto.strip(), estado="pendiente")
+    entrada = models.Entrada(usuario_id=usuario.id, texto=payload.texto.strip(),
+                             estado="pendiente", divisa=payload.divisa)
     db.add(entrada)
     db.commit()
     db.refresh(entrada)
