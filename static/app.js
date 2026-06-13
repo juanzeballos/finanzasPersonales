@@ -290,6 +290,7 @@ function renderRegistrar() {
 
   const pendientes = state.entradas.filter((e) => e.estado === "pendiente");
   const errores = state.entradas.filter((e) => e.estado === "error");
+  const faltaMonto = state.entradas.filter((e) => e.estado === "falta_monto");
 
   const vacio = hoy.length === 0 && state.entradas.length === 0 && !state.error;
 
@@ -305,6 +306,11 @@ function renderRegistrar() {
         ...pendientes.map((p) => `<div class="bubble-row ${popOnce("e" + p.id)}">
                <div class="bubble">${esc(p.texto)}</div>
                <div class="thinking">${icon("loader", 14, "spin")} clasificando…</div>
+             </div>`),
+        // entradas con falta_monto: aviso suave
+        ...faltaMonto.map((p) => `<div class="aviso info ${popOnce("fm" + p.id)}">${icon("alert", 15)}
+               <span>${esc(p.error || "Te faltó el monto.")}</span>
+               <button class="icon-btn" data-action="del-entrada" data-id="${p.id}" title="Descartar">${icon("trash", 14)}</button>
              </div>`),
         // entradas con error: aviso con botón para descartar
         ...errores.map((p) => `<div class="aviso error ${popOnce("err" + p.id)}">${icon("alert", 15)}
