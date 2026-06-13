@@ -32,6 +32,7 @@ class Gasto(Base):
     monto: Mapped[float] = mapped_column(Float, nullable=False)
     categoria: Mapped[str] = mapped_column(String, nullable=False)
     tipo: Mapped[str] = mapped_column(String, nullable=False)  # fijo | necesario | prescindible
+    divisa: Mapped[str] = mapped_column(String, nullable=False, default="ARS")  # ARS|USD|BRL|EUR
     emoji: Mapped[str] = mapped_column(String, nullable=False, default="💸")
     creado_en: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -45,6 +46,7 @@ class Entrada(Base):
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), index=True, nullable=False)
     texto: Mapped[str] = mapped_column(String, nullable=False)
     estado: Mapped[str] = mapped_column(String, nullable=False, default="pendiente")  # pendiente|procesado|error
+    divisa: Mapped[str] = mapped_column(String, nullable=False, default="ARS")  # divisa elegida en el chip al cargar
     error: Mapped[str | None] = mapped_column(String, nullable=True)
     creado_en: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
