@@ -95,6 +95,7 @@ const state = {
   authErrors: {},          // errores de validación por campo
   menuOpen: false,         // menú desplegable de la marca (tema + salir)
   editLibre: new Set(),
+  divisaMes: "ARS",
 };
 let pollTimer = null;      // timer del sondeo (polling)
 
@@ -138,7 +139,7 @@ const patchGasto = (id, campos) =>
   api(`/gastos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(campos) });
 const deleteGasto = (id) => api(`/gastos/${id}`, { method: "DELETE" });
 const deleteEntrada = (id) => api(`/entradas/${id}`, { method: "DELETE" });
-const postInforme = (mes) => api(`/informe?mes=${mes}`, { method: "POST" });
+const postInforme = (mes, divisa) => api(`/informe?mes=${mes}&divisa=${divisa}`, { method: "POST" });
 // --- autenticación ---
 const getYo = () => api("/yo");
 const postLogout = () => api("/logout", { method: "POST" });
@@ -335,7 +336,10 @@ function renderRegistrar() {
 // --- Vista: El mes ---
 function renderMes() {
   const key = `${state.cursor.y}-${pad(state.cursor.m + 1)}`;
-  const delMes = state.expenses.filter((e) => monthKey(e.fecha) === key).sort((a, b) => b.id - a.id);
+  const delMesTodos = state.expenses.filter((e) => monthKey(e.fecha) === key);
+  const monedasMes = [...new Set(delMesTodos.map((e) => e.divisa))];
+  const divMes = monedasMes.includes(state.divisaMes) ? state.divisaMes : (monedasMes[0] || "ARS");
+  const delMes = delMesTodos.filter((e) => e.divisa === divMes).sort((a, b) => b.id - a.id);
   const total = delMes.reduce((s, e) => s + e.monto, 0);
 
   const porTipo = TIPOS.map((t) => {
@@ -359,8 +363,14 @@ function renderMes() {
       <button class="nav-btn" data-action="month" data-dir="1">${icon("right", 16)}</button>
     </div>`;
 
+  const selMoneda = monedasMes.length > 1 ? `
+    <div class="mes-monedas">
+      ${CUR_LIST.filter((d) => monedasMes.includes(d)).map((d) =>
+        `<button class="moneda-tab ${d === divMes ? "active" : ""}" data-action="divisa-mes" data-divisa="${d}">${d}</button>`).join("")}
+    </div>` : "";
+
   if (delMes.length === 0) {
-    return `<div class="scroll col5">${nav}
+    return `<div class="scroll col5">${nav}${selMoneda}
       <div class="empty"><p class="title">Sin gastos este mes</p>
       <p class="sub">Registrá algunos desde la pestaña Registrar y van a aparecer acá.</p></div></div>`;
   }
@@ -378,7 +388,7 @@ function renderMes() {
     <div class="bar">
       <div class="bar-top">
         <div class="bar-left"><span class="bar-label">${label}</span>${hint ? `<span class="bar-hint">${hint}</span>` : ""}</div>
-        <div class="bar-right"><span class="bar-pct">${Math.round(pct)}%</span><span class="num" style="font-weight:600">${fmt(monto)}</span></div>
+        <div class="bar-right"><span class="bar-pct">${Math.round(pct)}%</span><span class="num" style="font-weight:600">${fmt(monto, divMes)}</span></div>
       </div>
       <div class="bar-track"><div class="bar-fill ${colorCls}" style="width:${Math.max(pct, 1.5)}%"></div></div>
     </div>`;
@@ -390,15 +400,16 @@ function renderMes() {
   return `
     <div class="scroll col5">
       ${nav}
+      ${selMoneda}
       <div class="total-card">
         <div class="lbl">Total del mes</div>
-        <div class="big num">${fmt(total)}</div>
+        <div class="big num">${fmt(total, divMes)}</div>
         <div class="stack">${stack}</div>
         <div class="stack-legend">
           <span>${icon("lock", 11)} sin margen</span>
           <span>margen de maniobra ${icon("sparkles", 11)}</span>
         </div>
-        ${prescindible.monto > 0 ? `<div class="insight"><b class="t-prescindible">${fmt(prescindible.monto)}</b> <span style="color:var(--muted)">(${Math.round(prescindible.pct)}%) fue prescindible — ahí está lo que podés recortar.</span></div>` : ""}
+        ${prescindible.monto > 0 ? `<div class="insight"><b class="t-prescindible">${fmt(prescindible.monto, divMes)}</b> <span style="color:var(--muted)">(${Math.round(prescindible.pct)}%) fue prescindible — ahí está lo que podés recortar.</span></div>` : ""}
         ${consejoHTML}
       </div>
 
@@ -528,13 +539,15 @@ async function descartarEntrada(id) {
 
 async function pedirConsejo() {
   const key = `${state.cursor.y}-${pad(state.cursor.m + 1)}`;
+  const monedasMes = [...new Set(state.expenses.filter((e) => monthKey(e.fecha) === key).map((e) => e.divisa))];
+  const divMes = monedasMes.includes(state.divisaMes) ? state.divisaMes : (monedasMes[0] || "ARS");
   state.consejoLoading = true;
   render();
   try {
-    const out = await postInforme(key);
+    const out = await postInforme(key, divMes);
     state.consejo = out.consejo;
   } catch (e) {
-    state.consejo = "No pude generar el consejo. ¿Está Ollama corriendo?";
+    state.consejo = "No pude generar el consejo. ¿Está el servidor corriendo?";
   } finally {
     state.consejoLoading = false;
     render();
@@ -644,6 +657,7 @@ document.addEventListener("click", (ev) => {
   else if (a === "toggle-pw") { state.showPw = !state.showPw; render(); }
   else if (a === "divisa-toggle") { state.divisaOpen = !state.divisaOpen; render(); }
   else if (a === "divisa-set") { setDivisa(el.dataset.divisa); }
+  else if (a === "divisa-mes") { state.divisaMes = el.dataset.divisa; state.consejo = null; render(); }
 });
 
 // Cerrar el menú de la marca al hacer clic afuera (no sobre el menú ni la marca)
