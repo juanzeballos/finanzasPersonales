@@ -5,12 +5,12 @@ La usa el worker en segundo plano. NO hace commit (lo hace el worker).
 """
 
 import re
-from datetime import date
 
 from sqlalchemy.orm import Session
 
 from . import ia, models, schemas
 from .parsing import detectar_divisa, extraer_montos, normalizar
+from .tiempo import hoy_local
 
 
 def normalizar_tipo(tipo: str) -> str:
@@ -72,7 +72,7 @@ def procesar_texto(db: Session, texto: str, usuario_id: int, divisa_chip: str = 
         fila = _buscar_concepto_en_texto(db, usuario_id, texto)
         if fila:
             gasto = models.Gasto(
-                usuario_id=usuario_id, fecha=date.today(), descripcion=fila.descripcion,
+                usuario_id=usuario_id, fecha=hoy_local(), descripcion=fila.descripcion,
                 monto=montos[0], categoria=fila.categoria, tipo=fila.tipo, emoji=fila.emoji,
                 divisa=divisa,
             )
@@ -98,7 +98,7 @@ def procesar_texto(db: Session, texto: str, usuario_id: int, divisa_chip: str = 
             categoria, tipo, emoji = aprendido.categoria, aprendido.tipo, aprendido.emoji
 
         gasto = models.Gasto(
-            usuario_id=usuario_id, fecha=date.today(), descripcion=descripcion,
+            usuario_id=usuario_id, fecha=hoy_local(), descripcion=descripcion,
             monto=float(item.amount), categoria=categoria, tipo=tipo, emoji=emoji,
             divisa=divisa,
         )
