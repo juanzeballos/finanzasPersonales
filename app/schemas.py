@@ -114,11 +114,13 @@ class GrupoOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class MiembroOut(BaseModel):
-    usuario_id: int
-    nombre: str | None = None
-    email: str
+class ParticipanteOut(BaseModel):
+    id: int
+    nombre: str
+    usuario_id: int | None = None   # None = placeholder por nombre, sin reclamar todavía
     rol: str
+
+    model_config = {"from_attributes": True}
 
 
 class RondaOut(BaseModel):
@@ -134,41 +136,47 @@ class GastoGrupoOut(BaseModel):
     descripcion: str
     monto: float
     emoji: str
-    pagador_id: int
+    pagador_id: int   # id de Participante
 
     model_config = {"from_attributes": True}
 
 
 class SaldoOut(BaseModel):
-    usuario_id: int
+    participante_id: int
     pagado: float
     le_toca: float
     saldo: float
 
 
 class PagoOut(BaseModel):
-    de: int
-    a: int
+    de: int   # participante_id
+    a: int    # participante_id
     monto: float
 
 
 class GrupoDetalleOut(BaseModel):
     grupo: GrupoOut
-    miembros: list[MiembroOut]
+    participantes: list[ParticipanteOut]
     ronda: RondaOut
-    presentes: list[int]
+    presentes: list[int]            # participante_ids
     gastos: list[GastoGrupoOut]
     saldos: list[SaldoOut]
     pagos: list[PagoOut]
-    invite_code: str | None = None   # solo para el admin
+    yo_id: int | None = None        # cuál participante soy yo (para el front)
+    invite_code: str | None = None  # solo para el admin
 
 
 class JoinIn(BaseModel):
     code: str
+    participante_id: int | None = None   # cuál placeholder reclamo; None = soy nuevo
 
 
 class PresentesIn(BaseModel):
-    usuario_ids: list[int]
+    participante_ids: list[int]
+
+
+class AgregarParticipanteIn(BaseModel):
+    nombre: str
 
 
 class GastoGrupoTexto(BaseModel):

@@ -86,15 +86,19 @@ class Grupo(Base):
     creado_en: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
-class GrupoMiembro(Base):
-    """Pertenencia de un usuario a un grupo, con rol (admin = el creador)."""
+class Participante(Base):
+    """Un integrante del grupo. Puede ser un usuario real (usuario_id seteado) o un
+    'placeholder por nombre' (usuario_id NULL) agregado a mano, hasta que alguien lo
+    reclame al unirse con el código. UniqueConstraint(grupo_id, usuario_id) permite
+    varios NULL (placeholders) pero impide al mismo usuario real dos veces en el grupo."""
 
-    __tablename__ = "grupo_miembros"
+    __tablename__ = "participantes"
     __table_args__ = (UniqueConstraint("grupo_id", "usuario_id", name="uq_grupo_usuario"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     grupo_id: Mapped[int] = mapped_column(ForeignKey("grupos.id"), index=True, nullable=False)
-    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), index=True, nullable=False)
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), index=True, nullable=True)
+    nombre: Mapped[str] = mapped_column(String, nullable=False)
     rol: Mapped[str] = mapped_column(String, nullable=False, default="miembro")  # admin|miembro
     creado_en: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -113,24 +117,24 @@ class Ronda(Base):
 
 
 class RondaParticipante(Base):
-    """Los 'presentes' de una ronda: entre quiénes se divide cada gasto de esa ronda."""
+    """Los 'presentes' de una ronda: entre qué participantes se divide cada gasto."""
 
     __tablename__ = "ronda_participantes"
-    __table_args__ = (UniqueConstraint("ronda_id", "usuario_id", name="uq_ronda_usuario"),)
+    __table_args__ = (UniqueConstraint("ronda_id", "participante_id", name="uq_ronda_participante"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     ronda_id: Mapped[int] = mapped_column(ForeignKey("rondas.id"), index=True, nullable=False)
-    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
+    participante_id: Mapped[int] = mapped_column(ForeignKey("participantes.id"), nullable=False)
 
 
 class GastoGrupo(Base):
-    """Un gasto de una ronda. `pagador_id` = quién pagó (puede no ser quien lo cargó)."""
+    """Un gasto de una ronda. `pagador_id` = qué participante pagó (puede no ser quien lo cargó)."""
 
     __tablename__ = "gastos_grupo"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     ronda_id: Mapped[int] = mapped_column(ForeignKey("rondas.id"), index=True, nullable=False)
-    pagador_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
+    pagador_id: Mapped[int] = mapped_column(ForeignKey("participantes.id"), nullable=False)
     descripcion: Mapped[str] = mapped_column(String, nullable=False)
     monto: Mapped[float] = mapped_column(Float, nullable=False)
     emoji: Mapped[str] = mapped_column(String, nullable=False, default="💸")
