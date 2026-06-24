@@ -330,3 +330,84 @@ body {
   border: 1px solid var(--hair);
 }
 .moneda-tab.active { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+
+/* ============================================================
+   Grupos
+   ============================================================ */
+
+/* Header de sección (título + botón volver) */
+.grupos-header {
+  display: flex; align-items: center; gap: 12px;
+}
+
+/* Items de la lista de grupos */
+.grupos-lista { display: flex; flex-direction: column; gap: 8px; }
+.grupo-item {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 14px 16px;
+  background: var(--surface); border: 1px solid var(--hair); border-radius: var(--r-card);
+  cursor: pointer; color: var(--ink); font-family: inherit; font-size: inherit;
+  text-align: left; transition: background .15s;
+}
+.grupo-item:hover { background: var(--bg); }
+.grupo-nombre { font-weight: 500; }
+.grupo-divisa { font-size: 12px; font-weight: 600; padding: 4px 10px; }
+
+/* Formularios de crear/unirse */
+.grupos-form { padding: 12px; }
+.grupos-form-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px;
+}
+.grupos-input {
+  flex: 1; min-width: 0; padding: 12px 14px; border-radius: 14px;
+  font-size: 16px; /* evita auto-zoom en iOS */
+  background: var(--bg); border: 1px solid var(--hair); color: var(--ink);
+  font-family: inherit; outline: none;
+}
+.grupos-input::placeholder { color: var(--muted); }
+.grupos-select {
+  flex: 0 0 auto; padding: 10px 10px; border-radius: 14px;
+  font: inherit; font-size: 14px;
+  background: var(--bg); border: 1px solid var(--hair); color: var(--ink);
+  cursor: pointer; outline: none;
+}
+.grupos-empty { color: var(--muted); font-size: 14px; margin: 8px 0; }
+
+/* Tip bajo el composer de grupo */
+.grupos-tip { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+
+/* Card de gasto de grupo */
+.grupo-gasto-card .card-head { cursor: default; }
+
+/* Filas de saldos */
+.saldo-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 0; border-bottom: 1px solid var(--hair); font-size: 14px;
+}
+.saldo-row:last-child { border-bottom: none; }
+.saldo-positivo { color: var(--necesario); font-weight: 600; }
+.saldo-negativo { color: var(--error); font-weight: 600; }
+.saldo-cero { color: var(--muted); }
+
+/* Filas de pagos */
+.pago-row {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 6px 0; font-size: 14px; color: var(--ink);
+  border-bottom: 1px solid var(--hair);
+}
+.pago-row:last-child { border-bottom: none; }
+
+/* Lista de presentes (checkboxes) */
+.presentes-lista { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.presente-row {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 14px; cursor: pointer;
+}
+.presente-check { width: 18px; height: 18px; accent-color: var(--ink); flex-shrink: 0; cursor: pointer; }
+
+/* Código de invitación */
+.invite-code {
+  font-family: var(--mono); font-size: 14px; font-weight: 600;
+  background: var(--bg); border: 1px solid var(--hair); border-radius: 8px;
+  padding: 6px 12px; letter-spacing: 0.05em; word-break: break-all;
+}

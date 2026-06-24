@@ -96,6 +96,15 @@ const state = {
   menuOpen: false,         // menú desplegable de la marca (tema + salir)
   editLibre: new Set(),
   divisaMes: "ARS",
+  // --- grupos ---
+  grupos: [],
+  grupoActual: null,       // GrupoDetalle cargado
+  grupoVista: "lista",     // "lista" | "detalle" | "historial"
+  grupoDraft: "",
+  grupoHistorial: [],
+  nuevoGrupoNombre: "",
+  nuevoGrupoDivisa: "ARS",
+  joinCode: "",
 };
 let pollTimer = null;      // timer del sondeo (polling)
 let renderedTab = null;    // qué pestaña está pintada en el DOM ahora mismo
@@ -147,6 +156,16 @@ const getYo = () => api("/yo");
 const postLogout = () => api("/logout", { method: "POST" });
 const postAuth = (modo, email, password, nombre) =>
   api(`/${modo}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, nombre }) });
+// --- grupos ---
+const cargarMisGrupos = () => api("/grupos");
+const crearGrupo = (nombre, divisa) => api("/grupos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombre, divisa }) });
+const getGrupo = (id) => api("/grupos/" + id);
+const joinGrupo = (code) => api("/grupos/join", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+const postGastoGrupo = (id, texto) => api("/grupos/" + id + "/gastos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto }) });
+const delGastoGrupo = (id, gid) => api("/grupos/" + id + "/gastos/" + gid, { method: "DELETE" });
+const setPresentes = (id, rid, ids) => api("/grupos/" + id + "/rondas/" + rid + "/presentes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ usuario_ids: ids }) });
+const cerrarRonda = (id) => api("/grupos/" + id + "/cerrar-ronda", { method: "POST" });
+const getHistorial = (id) => api("/grupos/" + id + "/historial");
 
 // ============================================================
 //  Render
@@ -162,6 +181,7 @@ function renderHeader() {
       <div class="tabs">
         <button class="tab ${state.tab === "registrar" ? "active" : ""}" data-action="tab" data-tab="registrar">Registrar</button>
         <button class="tab ${state.tab === "mes" ? "active" : ""}" data-action="tab" data-tab="mes">El mes</button>
+        <button class="tab ${state.tab === "grupos" ? "active" : ""}" data-action="tab" data-tab="grupos">Grupos</button>
       </div>
       ${state.menuOpen ? `
       <div class="menu">
@@ -434,6 +454,193 @@ function renderMes() {
     </div>`;
 }
 
+// --- Carga de grupos ---
+async function cargarGrupos() {
+  try {
+    state.grupos = await cargarMisGrupos();
+  } catch (e) { /* noop */ }
+  render();
+}
+
+async function abrirGrupo(id) {
+  try {
+    state.grupoActual = await getGrupo(id);
+    state.grupoVista = "detalle";
+  } catch (e) { /* noop */ }
+  render();
+}
+
+// --- Vista: Grupos ---
+function renderGrupos() {
+  if (state.grupoVista === "lista") {
+    const lista = state.grupos.length
+      ? state.grupos.map((g) => `
+        <button class="grupo-item" data-action="grupo-open" data-id="${g.id}">
+          <span class="grupo-nombre">${esc(g.nombre)}</span>
+          <span class="grupo-divisa pill">${esc(g.divisa)}</span>
+        </button>`).join("")
+      : `<p class="grupos-empty">Todavía no tenés grupos. ¡Creá uno o unite con un código!</p>`;
+
+    const selectDivisa = CUR_LIST.map((d) =>
+      `<option value="${d}" ${d === state.nuevoGrupoDivisa ? "selected" : ""}>${d}</option>`
+    ).join("");
+
+    return `<div class="scroll col5">
+      <div class="section-title">Mis grupos</div>
+      <div class="grupos-lista">${lista}</div>
+
+      <div class="card grupos-form">
+        <div class="section-title">Crear grupo</div>
+        <div class="grupos-form-row">
+          <input id="nuevo-grupo-nombre" class="grupos-input" placeholder="Nombre del grupo" autocomplete="off" value="${esc(state.nuevoGrupoNombre)}" />
+          <select id="nuevo-grupo-divisa" class="grupos-select" data-action="nuevo-grupo-divisa">
+            ${selectDivisa}
+          </select>
+          <button class="send-btn" data-action="grupo-crear" title="Crear grupo">${icon("arrow", 17)}</button>
+        </div>
+      </div>
+
+      <div class="card grupos-form">
+        <div class="section-title">Unirse con código</div>
+        <div class="grupos-form-row">
+          <input id="join-code" class="grupos-input" placeholder="Código de invitación" autocomplete="off" value="${esc(state.joinCode)}" />
+          <button class="send-btn" data-action="grupo-join" title="Unirse">${icon("arrow", 17)}</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  if (state.grupoVista === "historial") {
+    const g = state.grupoActual;
+    const nombreDe = (uid) => {
+      if (!g) return String(uid);
+      const m = g.miembros.find((x) => x.usuario_id === uid);
+      return m ? (m.nombre || m.email) : String(uid);
+    };
+    const divisa = g ? g.grupo.divisa : "ARS";
+
+    const histHTML = state.grupoHistorial.length
+      ? state.grupoHistorial.map((r) => `
+        <div class="card" style="padding:12px">
+          <div class="section-title">${esc(r.nombre)} — cerrada ${esc(r.cerrada_en ? r.cerrada_en.slice(0,10) : "")}</div>
+          <div class="saldo-row"><span>Total</span><span class="num" style="font-weight:600">${fmt(r.total, divisa)}</span></div>
+          ${(r.pagos || []).map((p) => `
+            <div class="pago-row">${esc(nombreDe(p.de))} → ${esc(nombreDe(p.a))}: <span class="num">${fmt(p.monto, divisa)}</span></div>`).join("")}
+        </div>`).join("")
+      : `<p class="grupos-empty">No hay rondas cerradas aún.</p>`;
+
+    return `<div class="scroll col5">
+      <div class="grupos-header">
+        <button class="nav-btn" data-action="grupo-back-historial">${icon("left", 16)}</button>
+        <span class="section-title" style="margin:0">Historial${g ? " — " + esc(g.grupo.nombre) : ""}</span>
+      </div>
+      ${histHTML}
+    </div>`;
+  }
+
+  // --- Vista detalle ---
+  const g = state.grupoActual;
+  if (!g) return `<div class="scroll col5"><p class="grupos-empty">Cargando…</p></div>`;
+
+  const divisa = g.grupo.divisa;
+  const nombreDe = (uid) => {
+    const m = g.miembros.find((x) => x.usuario_id === uid);
+    return m ? (m.nombre || m.email) : String(uid);
+  };
+
+  const gastosHTML = g.gastos.length
+    ? g.gastos.map((gasto) => `
+      <div class="card grupo-gasto-card">
+        <div class="card-head" style="cursor:default">
+          <span class="card-emoji">${esc(gasto.emoji || "💸")}</span>
+          <div class="card-main">
+            <div class="card-desc">${esc(gasto.descripcion)}</div>
+            <div class="card-meta"><span class="card-cat">pagó ${esc(nombreDe(gasto.pagador_id))}</span></div>
+          </div>
+          <span class="card-amount num">${fmt(gasto.monto, divisa)}</span>
+          <button class="icon-btn" data-action="grupo-del-gasto" data-id="${gasto.id}" title="Eliminar">${icon("trash", 15)}</button>
+        </div>
+      </div>`).join("")
+    : `<p class="grupos-empty">Sin gastos en esta ronda.</p>`;
+
+  const saldosHTML = (g.saldos || []).map((s) => {
+    const saldo = s.saldo;
+    const cls = saldo > 0 ? "saldo-positivo" : saldo < 0 ? "saldo-negativo" : "saldo-cero";
+    const label = saldo > 0
+      ? `le deben <span class="num saldo-positivo">${fmt(saldo, divisa)}</span>`
+      : saldo < 0
+        ? `debe <span class="num saldo-negativo">${fmt(-saldo, divisa)}</span>`
+        : `<span class="saldo-cero">al día</span>`;
+    return `<div class="saldo-row"><span>${esc(nombreDe(s.usuario_id))}</span><span>${label}</span></div>`;
+  }).join("");
+
+  const pagosHTML = (g.pagos || []).length
+    ? (g.pagos || []).map((p) => `
+      <div class="pago-row">${esc(nombreDe(p.de))} ${icon("arrow", 13)} ${esc(nombreDe(p.a))}: <span class="num">${fmt(p.monto, divisa)}</span></div>`).join("")
+    : `<p class="grupos-empty" style="margin:0">Sin pagos pendientes.</p>`;
+
+  const presentesHTML = g.miembros.map((m) => {
+    const checked = g.presentes.includes(m.usuario_id) ? "checked" : "";
+    return `<label class="presente-row">
+      <input type="checkbox" class="presente-check" data-action="grupo-presente" data-id="${m.usuario_id}" ${checked} />
+      <span>${esc(m.nombre || m.email)}</span>
+    </label>`;
+  }).join("");
+
+  const adminHTML = g.invite_code != null ? `
+    <div class="card" style="padding:12px">
+      <div class="section-title">Administrar</div>
+      <div class="grupos-form-row" style="flex-wrap:wrap;gap:8px">
+        <code class="invite-code">${esc(g.invite_code)}</code>
+        <button class="pill" data-action="grupo-copy-invite">${icon("arrow", 15)}<span>Copiar link</span></button>
+      </div>
+      <button class="pill" style="margin-top:8px" data-action="grupo-cerrar">${icon("lock", 15)}<span>Cerrar ronda</span></button>
+    </div>` : "";
+
+  return `<div class="scroll col5">
+    <div class="grupos-header">
+      <button class="nav-btn" data-action="grupo-back">${icon("left", 16)}</button>
+      <span style="font-weight:600">${esc(g.grupo.nombre)}</span>
+      <span class="pill" style="font-size:12px">${esc(divisa)}</span>
+    </div>
+
+    <div class="card" style="padding:12px">
+      <div class="section-title">Ronda: ${esc(g.ronda ? g.ronda.nombre : "")}</div>
+      <div class="composer" style="border-top:none;padding:0">
+        <div class="row">
+          <input id="grupo-input" class="grupos-input" placeholder="Ej: Pedro pagó 5000 de carne…" autocomplete="off" value="${esc(state.grupoDraft)}" />
+          <button class="send-btn" data-action="grupo-send" title="Cargar gastos">${icon("send", 17)}</button>
+        </div>
+        <p class="grupos-tip">Tip: podés decir quién pagó, ej. "Pedro pagó 5000 de carne"</p>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Gastos</div>
+      <div class="stack-gap">${gastosHTML}</div>
+    </div>
+
+    <div class="card" style="padding:12px">
+      <div class="section-title">Saldos</div>
+      ${saldosHTML || `<p class="grupos-empty" style="margin:0">Sin datos.</p>`}
+    </div>
+
+    <div class="card" style="padding:12px">
+      <div class="section-title">Quién le paga a quién</div>
+      ${pagosHTML}
+    </div>
+
+    <div class="card" style="padding:12px">
+      <div class="section-title">Presentes en esta ronda</div>
+      <div class="presentes-lista">${presentesHTML}</div>
+    </div>
+
+    ${adminHTML}
+
+    <button class="pill" data-action="grupo-historial">${icon("calendar", 15)}<span>Ver historial</span></button>
+  </div>`;
+}
+
 function render() {
   if (!state.usuario) { renderAuth(); return; }   // sin sesión → pantalla de login
   document.getElementById("header").style.display = "";   // restaurar header/ancho de la app
@@ -449,7 +656,8 @@ function render() {
 
   renderHeader();
   document.getElementById("view").innerHTML =
-    state.tab === "registrar" ? renderRegistrar() : renderMes();
+    state.tab === "registrar" ? renderRegistrar() :
+    state.tab === "mes" ? renderMes() : renderGrupos();
   renderedTab = state.tab;
 
   const sc = document.querySelector(".scroll");
@@ -462,7 +670,7 @@ function render() {
     }
     if (sc) sc.scrollTop = sc.scrollHeight;          // chat: siempre al fondo
   } else if (sc) {
-    sc.scrollTop = scrollPos[state.tab] || 0;        // "El mes": mantener el lugar (0 al entrar)
+    sc.scrollTop = scrollPos[state.tab] || 0;        // "El mes" / "Grupos": mantener el lugar (0 al entrar)
   }
   state.focusInput = false;
   ultimoSnapshot = snapshot();  // dejamos registrado lo que se acaba de pintar
@@ -516,6 +724,22 @@ async function enviar() {
   }
   render();
   asegurarPolling();  // empezar a sondear para ver cuándo se clasifica
+}
+
+async function enviarGastoGrupo() {
+  const g = state.grupoActual;
+  if (!g) return;
+  const texto = (state.grupoDraft || "").trim();
+  if (!texto) return;
+  state.grupoDraft = "";
+  render();
+  try {
+    await postGastoGrupo(g.grupo.id, texto);
+    state.grupoActual = await getGrupo(g.grupo.id);
+  } catch (e) {
+    state.grupoDraft = texto;  // restaurar en caso de error
+  }
+  render();
 }
 
 async function editarGasto(id, campos) {
@@ -646,7 +870,7 @@ document.addEventListener("click", (ev) => {
   const a = el.dataset.action;
   const id = el.dataset.id ? Number(el.dataset.id) : null;
 
-  if (a === "tab") { state.tab = el.dataset.tab; if (state.tab === "registrar") state.focusInput = true; render(); }
+  if (a === "tab") { state.tab = el.dataset.tab; if (state.tab === "registrar") state.focusInput = true; render(); if (state.tab === "grupos") cargarGrupos(); }
   else if (a === "theme") { setTheme(!state.dark); render(); }
   else if (a === "send") { enviar(); }
   else if (a === "toggle") {
@@ -678,6 +902,69 @@ document.addEventListener("click", (ev) => {
   else if (a === "divisa-toggle") { state.divisaOpen = !state.divisaOpen; render(); }
   else if (a === "divisa-set") { setDivisa(el.dataset.divisa); }
   else if (a === "divisa-mes") { state.divisaMes = el.dataset.divisa; state.consejo = null; render(); }
+  // --- grupos ---
+  else if (a === "grupo-open") { abrirGrupo(id); }
+  else if (a === "grupo-back") { state.grupoVista = "lista"; state.grupoActual = null; render(); }
+  else if (a === "grupo-back-historial") { state.grupoVista = "detalle"; render(); }
+  else if (a === "grupo-crear") {
+    const nombre = state.nuevoGrupoNombre.trim();
+    if (!nombre) return;
+    (async () => {
+      try {
+        state.grupoActual = await crearGrupo(nombre, state.nuevoGrupoDivisa);
+        state.nuevoGrupoNombre = "";
+        state.grupoVista = "detalle";
+        cargarGrupos();  // background refresh of list
+        render();
+      } catch (e) { /* noop */ }
+    })();
+  }
+  else if (a === "grupo-join") {
+    const code = state.joinCode.trim();
+    if (!code) return;
+    (async () => {
+      try {
+        const r = await joinGrupo(code);
+        state.joinCode = "";
+        await abrirGrupo(r.id);
+        cargarGrupos();
+      } catch (e) { /* noop */ }
+    })();
+  }
+  else if (a === "grupo-send") { enviarGastoGrupo(); }
+  else if (a === "grupo-del-gasto") {
+    (async () => {
+      try {
+        const g = state.grupoActual;
+        await delGastoGrupo(g.grupo.id, id);
+        state.grupoActual = await getGrupo(g.grupo.id);
+        render();
+      } catch (e) { /* noop */ }
+    })();
+  }
+  else if (a === "grupo-cerrar") {
+    (async () => {
+      try {
+        state.grupoActual = await cerrarRonda(state.grupoActual.grupo.id);
+        render();
+      } catch (e) { /* noop */ }
+    })();
+  }
+  else if (a === "grupo-historial") {
+    (async () => {
+      try {
+        state.grupoHistorial = await getHistorial(state.grupoActual.grupo.id);
+        state.grupoVista = "historial";
+        render();
+      } catch (e) { /* noop */ }
+    })();
+  }
+  else if (a === "grupo-copy-invite") {
+    const g = state.grupoActual;
+    if (g && g.invite_code != null) {
+      navigator.clipboard.writeText(location.origin + "/?join=" + g.invite_code).catch(() => {});
+    }
+  }
 });
 
 // Cerrar el menú de la marca al hacer clic afuera (no sobre el menú ni la marca)
@@ -693,6 +980,10 @@ document.addEventListener("keydown", (ev) => {
     ev.preventDefault();
     enviar();
   }
+  if (ev.target.id === "grupo-input" && ev.key === "Enter" && !ev.shiftKey) {
+    ev.preventDefault();
+    enviarGastoGrupo();
+  }
   if (ev.target.id && ev.target.id.startsWith("auth-") && ev.key === "Enter") {
     ev.preventDefault();
     submitAuth();
@@ -706,6 +997,10 @@ document.addEventListener("input", (ev) => {
   else if (id === "auth-email") state.auth.email = ev.target.value;
   else if (id === "auth-password") state.auth.password = ev.target.value;
   else if (id === "auth-confirm") state.auth.confirm = ev.target.value;
+  else if (id === "grupo-input") state.grupoDraft = ev.target.value;
+  else if (id === "nuevo-grupo-nombre") state.nuevoGrupoNombre = ev.target.value;
+  else if (id === "join-code") state.joinCode = ev.target.value;
+  else if (id === "nuevo-grupo-divisa") state.nuevoGrupoDivisa = ev.target.value;
 });
 
 document.addEventListener("change", (ev) => {
@@ -715,6 +1010,19 @@ document.addEventListener("change", (ev) => {
   else if (t.classList.contains("edit-cat")) {
     if (t.value === "__otra__") { state.editLibre.add(id); render(); }
     else { state.editLibre.delete(id); editarGasto(id, { categoria: t.value }); }
+  }
+  else if (t.id === "nuevo-grupo-divisa") { state.nuevoGrupoDivisa = t.value; }
+  else if (t.classList.contains("presente-check")) {
+    (async () => {
+      try {
+        const g = state.grupoActual;
+        const uid = Number(t.dataset.id);
+        const set = new Set(g.presentes);
+        if (t.checked) set.add(uid); else set.delete(uid);
+        state.grupoActual = await setPresentes(g.grupo.id, g.ronda.id, [...set]);
+        render();
+      } catch (e) { /* noop */ }
+    })();
   }
 });
 
@@ -754,6 +1062,22 @@ document.addEventListener("blur", (ev) => {
   } catch (e) {
     state.usuario = null;
   }
+
+  // Deep-link de invitación: ?join=<code>
+  if (state.usuario) {
+    const joinCode = new URLSearchParams(location.search).get("join");
+    if (joinCode) {
+      history.replaceState(null, "", location.pathname);
+      try {
+        const r = await joinGrupo(joinCode);
+        state.tab = "grupos";
+        state.grupoActual = await getGrupo(r.id);
+        state.grupoVista = "detalle";
+        try { state.grupos = await cargarMisGrupos(); } catch (e2) {}
+      } catch (e) { /* si falla (ya miembro, código inválido), ignorar silenciosamente */ }
+    }
+  }
+
   render();
   if (state.usuario && state.entradas.some((e) => e.estado === "pendiente")) asegurarPolling();
 })();
