@@ -18,16 +18,13 @@ Detalle completo del código y la teoría en `doc/01..04`.
 - Evaluamos hosting: **Oracle Always Free** (ARM A1 sin capacidad disponible → descartado) y **Hetzner**
   (VPS ~US$5,60/mes, CX22) → **elegimos Hetzner + Postgres** (para multiusuario real).
 
-## 3. Ramas del repo
-- **`main`** — versión que corría en Fly (SQLite). Intacta.
-- **`oracle`** — rama de la migración. **La Fase A YA está hecha y pusheada acá**:
-  - `requirements.txt`: + `psycopg[binary]` (driver Postgres).
-  - `app/database.py`: elige config según SQLite (local) o Postgres (`DATABASE_URL`).
-  - `app/routers/gastos.py`: filtro por mes **portable** con `rango_mes()` (rango de fechas; se sacó `func.strftime`, que era solo de SQLite).
-  - `docker-compose.yml`: **Postgres + app (web) + Caddy** con volúmenes persistentes.
-  - `Caddyfile`: HTTPS automático para `{$DOMINIO}`.
-  - `.env.example`: plantilla de secretos (el `.env` real NO se sube).
-  - **Trabajar y deployar Hetzner desde la rama `oracle`.**
+## 3. Ramas del repo (ACTUALIZADO 2026-06)
+Convención actual, después de ordenar las ramas:
+- **`main`** — **producción**. Es de donde el server hace `git pull`. Tiene todo: migración a Postgres, multi-divisa, edición de gastos, fixes, etc.
+- **`dev`** — **desarrollo**. Se trabaja acá; cuando está listo, `dev` → `main` (fast-forward) → deploy.
+- ~~`oracle`~~ — era la rama de la migración; ya se **jubiló** (su contenido quedó en `main`).
+
+> Histórico: la migración a Postgres se hizo en la rama `oracle` (requirements + `psycopg[binary]`; `app/database.py` elige SQLite local o Postgres por `DATABASE_URL`; filtro por mes portable con `rango_mes()`; `docker-compose.yml` con Postgres+web+Caddy; `Caddyfile` HTTPS automático; `.env.example`). Después se consolidó todo en `main`.
 
 ## 4. Servidor Hetzner
 - **Server activo: IP `135.181.34.126`** (CX22, Ubuntu 24.04, Backups OFF). Usuario SSH: **`root`**.
@@ -74,12 +71,12 @@ Se deployaron 3 features (spec/plan en `docs/superpowers/`): **editar monto/cate
 ```
 docker compose exec -T db psql -U gastos -d gastos -c "ALTER TABLE gastos ADD COLUMN IF NOT EXISTS divisa VARCHAR NOT NULL DEFAULT 'ARS';" -c "ALTER TABLE entradas ADD COLUMN IF NOT EXISTS divisa VARCHAR NOT NULL DEFAULT 'ARS';"
 ```
-Procedimiento de deploy: `git push origin oracle` → en server `cd /opt/gastos && git pull && <ALTER de arriba> && docker compose up -d --build`.
+Procedimiento de deploy: trabajar en `dev` → `git checkout main && git merge --ff-only dev && git push origin main` → en server `cd /opt/gastos && git pull && <ALTER si hace falta> && docker compose up -d --build`. (El server está en la rama `main`.)
 
 **⚠️ Incidencia del `.env` (resuelta):** el `/opt/gastos/.env` estaba corrupto (todo en una línea, separadores `n` literales, secretos de un intento viejo) — quedó así de la creación inicial por PowerShell. La app no se cayó hasta que un `docker compose up` recreó los contenedores y `web` no pudo conectar a Postgres (`no password supplied`). Se reescribió el `.env` limpio (4 líneas, LF, sin BOM, `DOMINIO=gastos-ia.duckdns.org`) y se **alineó el password del rol** con `ALTER USER gastos WITH PASSWORD '...'` (preserva todos los datos). Los datos quedaron intactos (6 usuarios). **Se regeneró `SECRET_KEY`**, así que las sesiones viejas se invalidaron: hay que **re-loguearse una vez**. Lección: NO escribir el `.env` pipeando strings de PowerShell a `ssh` (mete BOM/CRLF/`\n` literal); generarlo en el server con `printf` o copiar un script por `scp`.
 
 ## 7. Pendientes a futuro (post-deploy)
 - ✅ ~~Dominio lindo~~ → ya está en `gastos-ia.duckdns.org`.
 - Backups de la base (Postgres) si se vuelve serio (el volumen `gastos_pgdata` tiene los datos).
-- Ya andando en Hetzner: mergear `oracle` → `main` (o renombrar) para que sea la rama principal.
+- ✅ ~~mergear `oracle` → `main`~~ → hecho: `main` es producción, `dev` desarrollo, `oracle` jubilada.
 - Apagar Fly del todo si todavía quedaba algo corriendo (ya no se usa).
