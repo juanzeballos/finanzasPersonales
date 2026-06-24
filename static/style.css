@@ -411,3 +411,49 @@ body {
   background: var(--bg); border: 1px solid var(--hair); border-radius: 8px;
   padding: 6px 12px; letter-spacing: 0.05em; word-break: break-all;
 }
+
+/* ── Chips de presentes ── */
+.presentes-chips {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;
+}
+.presente-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: var(--r-pill); cursor: pointer;
+  font: inherit; font-size: 14px; font-family: var(--sans);
+  border: 1px solid var(--hair); background: transparent; color: var(--muted);
+  transition: background .15s, color .15s, border-color .15s;
+}
+.presente-chip.activo {
+  background: var(--ink); color: var(--on-ink); border-color: var(--ink);
+}
+.presente-avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--hair); color: var(--ink);
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.presente-chip.activo .presente-avatar {
+  background: rgba(255,255,255,0.2); color: var(--on-ink);
+}
+.presente-nombre { white-space: nowrap; }
+.presente-check-icon { opacity: .7; }
+
+/* Chip "+" punteado */
+.presente-chip.add-chip {
+  border-style: dashed; color: var(--muted);
+}
+.presente-chip.add-chip:hover { border-color: var(--ink); color: var(--ink); }
+
+/* Botón primario (Hacer cuentas) */
+.btn-primario {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 20px; border-radius: var(--r-card); border: none; cursor: pointer;
+  background: var(--ink); color: var(--on-ink);
+  font: inherit; font-size: 14px; font-weight: 600;
+  transition: opacity .15s;
+}
+.btn-primario:hover { opacity: .88; }
+
+/* Header detalle — alinear bien en mobile */
+.grupos-header { flex-wrap: wrap; gap: 8px; }
+.grupos-header .pill { font-size: 12px; }
