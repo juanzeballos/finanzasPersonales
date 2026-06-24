@@ -605,7 +605,7 @@ function renderGrupos() {
     </div>
 
     <div class="card" style="padding:12px">
-      <div class="section-title">Ronda: ${esc(g.ronda ? g.ronda.nombre : "")}</div>
+      <div class="section-title">${g.ronda && g.ronda.nombre ? "Ronda: " + esc(g.ronda.nombre) : "Ronda actual"}</div>
       <div class="composer" style="border-top:none;padding:0">
         <div class="row">
           <input id="grupo-input" class="grupos-input" placeholder="Ej: Pedro pagó 5000 de carne…" autocomplete="off" value="${esc(state.grupoDraft)}" />
