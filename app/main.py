@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import models  # noqa: F401  (importa para registrar las tablas en Base)
 from .database import Base, engine
-from .routers import auth, gastos, informe
+from .routers import auth, gastos, grupos, informe
 from .worker import iniciar_worker
 
 
@@ -33,6 +33,7 @@ app = FastAPI(title="Gastos IA", lifespan=lifespan)
 
 app.include_router(auth.router)
 app.include_router(gastos.router)
+app.include_router(grupos.router)
 app.include_router(informe.router)
 
 

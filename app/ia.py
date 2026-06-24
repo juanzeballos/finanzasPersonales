@@ -131,3 +131,34 @@ def generar_informe(resumen_texto: str) -> str:
     """Resumen (ya con porcentajes) -> consejo en texto."""
     prompt = PROMPT_INFORME.format(resumen=resumen_texto)
     return _generar(prompt, json_mode=False).strip()
+
+
+PROMPT_GRUPO = """Sos un asistente que registra gastos compartidos de un grupo de amigos.
+Miembros del grupo: {miembros}.
+Te paso un texto con uno o más gastos. Devolvé EXCLUSIVAMENTE un JSON válido con esta forma exacta:
+{{"items":[{{"pagador":"nombre o null","description":"texto corto","amount":123,"emoji":"un emoji"}}],"missing":["..."]}}
+
+Reglas:
+- "pagador": si el texto dice quién pagó usando un nombre de la lista de miembros, poné ese nombre
+  TAL CUAL aparece en la lista. Si dice "yo"/"mí" o no aclara quién pagó, poné null.
+- "amount": número del gasto, sin símbolos ni separadores de miles. Puede tener decimales.
+  Interpretá slang argentino: "luca"/"k" = mil ("5 lucas" = 5000), "palo" = millón.
+- "description": resumen CORTO del gasto (ej: "Carne", "Bebida", "Hielo").
+- "emoji": un único emoji que represente el gasto.
+- "missing": SOLO gastos mencionados SIN monto. Si todos tienen monto, debe ser [].
+- Un mismo mensaje puede tener VARIOS gastos: separalos en items distintos.
+- Clasificá ÚNICAMENTE el texto de abajo. No inventes gastos.
+
+Texto: "{texto}"
+"""
+
+
+def clasificar_grupo(texto: str, nombres: list[str]) -> dict:
+    """Texto libre + nombres de los miembros -> {"items": [{pagador, description, amount, emoji}], "missing": [...]}.
+
+    `pagador` viene como NOMBRE (o None); el router lo resuelve a un usuario del grupo.
+    """
+    prompt = PROMPT_GRUPO.format(miembros=", ".join(nombres) or "(sin nombres)", texto=texto)
+    raw = _generar(prompt, json_mode=True)
+    datos = json.loads(raw)
+    return {"items": datos.get("items", []), "missing": datos.get("missing", [])}

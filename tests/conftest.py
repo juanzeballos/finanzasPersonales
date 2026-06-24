@@ -55,3 +55,9 @@ def auth_client(client):
     r = client.post("/registro", json={"email": "t@t.com", "password": "test123", "nombre": "T"})
     assert r.status_code == 200, r.text
     return client
+
+
+@pytest.fixture()
+def client2(client):
+    """Segundo cliente (otro usuario) sobre la MISMA app y base — para probar grupos."""
+    return TestClient(main.app)

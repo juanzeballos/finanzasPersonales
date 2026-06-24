@@ -96,3 +96,80 @@ class UsuarioOut(BaseModel):
     nombre: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+# ----------------- Gastos en grupo -----------------
+
+class GrupoCrear(BaseModel):
+    nombre: str
+    divisa: str = "ARS"
+
+
+class GrupoOut(BaseModel):
+    id: int
+    nombre: str
+    divisa: str
+    creador_id: int
+
+    model_config = {"from_attributes": True}
+
+
+class MiembroOut(BaseModel):
+    usuario_id: int
+    nombre: str | None = None
+    email: str
+    rol: str
+
+
+class RondaOut(BaseModel):
+    id: int
+    nombre: str | None = None
+    estado: str
+
+    model_config = {"from_attributes": True}
+
+
+class GastoGrupoOut(BaseModel):
+    id: int
+    descripcion: str
+    monto: float
+    emoji: str
+    pagador_id: int
+
+    model_config = {"from_attributes": True}
+
+
+class SaldoOut(BaseModel):
+    usuario_id: int
+    pagado: float
+    le_toca: float
+    saldo: float
+
+
+class PagoOut(BaseModel):
+    de: int
+    a: int
+    monto: float
+
+
+class GrupoDetalleOut(BaseModel):
+    grupo: GrupoOut
+    miembros: list[MiembroOut]
+    ronda: RondaOut
+    presentes: list[int]
+    gastos: list[GastoGrupoOut]
+    saldos: list[SaldoOut]
+    pagos: list[PagoOut]
+    invite_code: str | None = None   # solo para el admin
+
+
+class JoinIn(BaseModel):
+    code: str
+
+
+class PresentesIn(BaseModel):
+    usuario_ids: list[int]
+
+
+class GastoGrupoTexto(BaseModel):
+    texto: str
