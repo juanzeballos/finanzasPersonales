@@ -46,9 +46,12 @@ Te paso un texto con uno o más gastos. Devolvé EXCLUSIVAMENTE un JSON válido 
 
 Reglas:
 - "description": un resumen CORTO del gasto (ej: "Luz", "Supermercado", "Nafta"). NO copies el texto entero.
-- "amount": número del gasto, sin símbolos de moneda ni separadores de miles. Puede tener decimales
-  (ej. 12.50). Interpretá slang argentino: "luca"/"k" = mil ("5 lucas" y "5k" = 5000,
-  "30 lucas" = 30000, "media luca" = 500), "palo" = millón ("2 palos" = 2000000), "$3.500" = 3500.
+- "amount": el número EXACTO que escribió la persona, tal cual, sin símbolos ni separadores de miles.
+  NUNCA conviertas monedas ni estimes precios: la moneda se maneja aparte, para el monto IGNORALA.
+  Si dice "20 usd", "4 dólares", "€10", "50 reales" o "$1500", el amount es 20, 4, 10, 50 y 1500
+  respectivamente (NO lo pases a pesos, NO inventes el precio de nada). Puede tener decimales (ej. 12.50).
+  Interpretá slang argentino: "luca"/"k" = mil ("5 lucas" y "5k" = 5000, "30 lucas" = 30000,
+  "media luca" = 500), "palo" = millón ("2 palos" = 2000000), "$3.500" = 3500.
 - "missing": SOLO para gastos que la persona mencionó SIN decir el monto. Si TODOS los gastos
   mencionados tienen monto, "missing" DEBE ser []. NUNCA inventes datos faltantes ni preguntes
   por gastos que la persona no nombró.

@@ -107,4 +107,11 @@ def procesar_texto(db: Session, texto: str, usuario_id: int, divisa_chip: str = 
         creados.append(gasto)
         aprender(db, usuario_id, descripcion, categoria, tipo, emoji)
 
+    # El monto lo calcula Python, no la IA. Si la cantidad de montos detectados coincide con la
+    # de gastos creados, mandamos los números literales (en orden). Evita que la IA convierta
+    # monedas o estime precios (ej. "20 usd" -> 1800). Si no coinciden, dejamos los de la IA.
+    if len(montos) == len(creados):
+        for gasto, monto in zip(creados, montos):
+            gasto.monto = monto
+
     return {"created": creados, "missing": clasificado.missing}

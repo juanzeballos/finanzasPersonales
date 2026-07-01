@@ -50,3 +50,27 @@ def test_procesar_texto_pisa_al_chip(Session, monkeypatch):
     # chip en ARS, pero el texto dice "reales" -> BRL
     res = clasificador.procesar_texto(db, "50 reales el taxi", usuario_id=1, divisa_chip="ARS")
     assert res["created"][0].divisa == "BRL"
+
+
+def test_monto_determinstico_pisa_conversion_de_la_ia(Session, monkeypatch):
+    """La IA a veces convierte monedas (ej. "20 usd" -> 1800 pesos). Con un único monto
+    detectable en el texto, mandamos el número literal, no lo que devuelve la IA."""
+    db = Session()
+    _stub_ia(monkeypatch, [{"description": "Cerveza", "amount": 1800, "category": "Restaurante",
+                            "tipo": "prescindible", "emoji": "🍺"}])
+    res = clasificador.procesar_texto(db, "20 usd de cerveza", usuario_id=1, divisa_chip="USD")
+    assert res["created"][0].monto == 20.0
+    assert res["created"][0].divisa == "USD"
+
+
+def test_monto_determinstico_multiples_gastos(Session, monkeypatch):
+    """Con varios gastos y misma cantidad de montos detectables, cada uno toma su número literal
+    (en orden), aunque la IA los haya convertido."""
+    db = Session()
+    _stub_ia(monkeypatch, [
+        {"description": "Cerveza", "amount": 1800, "category": "Restaurante", "tipo": "prescindible", "emoji": "🍺"},
+        {"description": "Maní", "amount": 450, "category": "Comida y delivery", "tipo": "prescindible", "emoji": "🥜"},
+    ])
+    res = clasificador.procesar_texto(db, "20 usd de cerveza y 5 usd de mani", usuario_id=1, divisa_chip="USD")
+    montos = [g.monto for g in res["created"]]
+    assert montos == [20.0, 5.0]   # cerveza=20, maní=5 (orden del texto), no 1800/450
