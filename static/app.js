@@ -13,6 +13,19 @@ const TIPOS = [
 ];
 const CATEGORIAS = ["Supermercado","Comida y delivery","Restaurante","Café","Transporte","Nafta","Servicios","Impuestos","Alquiler","Salud","Educación","Gimnasio","Entretenimiento","Ropa","Hogar","Suscripciones","Viajes","Otros"];
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const DIAS_SEM = ["dom","lun","mar","mié","jue","vie","sáb"];
+const MESES_ABREV = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+// f = "YYYY-MM-DD". Construir Date con componentes explícitos evita el corrimiento por UTC.
+function fmtFechaBar(f) {
+  const [y, m, d] = f.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  return `${DIAS_SEM[dt.getDay()]} ${d} ${MESES_ABREV[m - 1]} ${y}`;
+}
+function addDias(f, n) {
+  const [y, m, d] = f.split("-").map(Number);
+  const dt = new Date(y, m - 1, d + n);   // JS normaliza el desborde de días/meses
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+}
 const THEME_KEY = "gastos-theme-v1";
 const DIVISA_KEY = "gastos-divisa-v1";
 
@@ -76,7 +89,7 @@ const state = {
   expenses: [],            // gastos ya clasificados (del backend)
   entradas: [],            // entradas pendientes o con error (del backend)
   cursor: { y: now.getFullYear(), m: now.getMonth() },
-  vista: "control",
+  vista: "categoria",
   draft: "",
   focusInput: false,
   error: null,             // error de conexión con el backend
@@ -85,6 +98,7 @@ const state = {
   open: new Set(),
   divisa: "ARS",
   divisaOpen: false,
+  fechaSel: null,          // YYYY-MM-DD; se inicializa a hoy en init()
   // --- autenticación ---
   usuario: null,           // null = no logueado; {id, email, nombre} = logueado
   authModo: "login",       // "login" | "registro"
@@ -133,8 +147,8 @@ async function api(url, opts) {
 }
 const cargarGastos = () => api("/gastos");
 const cargarEntradas = () => api("/entradas");
-const postGasto = (texto, divisa) =>
-  api("/gastos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto, divisa }) });
+const postGasto = (texto, divisa, fecha) =>
+  api("/gastos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto, divisa, fecha }) });
 const patchTipo = (id, tipo) =>
   api(`/gastos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo }) });
 const patchGasto = (id, campos) =>
@@ -283,8 +297,9 @@ function cardHTML(e) {
 
 // --- Vista: Registrar (chat) ---
 function renderRegistrar() {
+  const esHoy = state.fechaSel === todayStr();
   const hoy = state.expenses
-    .filter((e) => e.fecha === todayStr())
+    .filter((e) => e.fecha === state.fechaSel)
     .sort((a, b) => a.id - b.id);
   const totalesHoy = {};
   hoy.forEach((e) => { totalesHoy[e.divisa] = (totalesHoy[e.divisa] || 0) + e.monto; });
@@ -322,6 +337,16 @@ function renderRegistrar() {
         state.error ? `<div class="aviso error pop">${icon("alert", 15)}<span>${esc(state.error)}</span></div>` : "",
       ].join("");
 
+  const barraFecha = `
+    <div class="fecha-bar">
+      <button class="fecha-arrow" data-action="fecha-dia" data-dir="-1" aria-label="Día anterior">${icon("left", 16)}</button>
+      <div class="fecha-label" data-action="fecha-open">
+        ${icon("calendar", 15)}<span>${fmtFechaBar(state.fechaSel)}</span>
+        <input type="date" id="fecha-input" value="${state.fechaSel}" aria-label="Elegir fecha" />
+      </div>
+      <button class="fecha-arrow" data-action="fecha-dia" data-dir="1" aria-label="Día siguiente">${icon("right", 16)}</button>
+    </div>`;
+
   const chip = `
     <div class="divisa-bar">
       <button class="divisa-chip ${state.divisaOpen ? "open" : ""}" data-action="divisa-toggle">${state.divisa}</button>
@@ -330,10 +355,10 @@ function renderRegistrar() {
       </div>` : ""}
     </div>`;
 
-  return `${chip}
+  return `${barraFecha}${chip}
     <div class="scroll" id="scroll">${chat}</div>
     <div class="composer">
-      ${hoy.length > 0 ? `<div class="total-line"><span class="lbl">Hoy llevás</span><span class="num" style="font-weight:600">${totalHoyStr}</span></div>` : ""}
+      ${hoy.length > 0 ? `<div class="total-line"><span class="lbl">${esHoy ? "Hoy llevás" : "Ese día llevás"}</span><span class="num" style="font-weight:600">${totalHoyStr}</span></div>` : ""}
       <div class="row">
         <input id="composer-input" placeholder="Anotá un gasto…" autocomplete="off" value="${esc(state.draft)}" />
         <button class="send-btn" data-action="send">${icon("send", 17)}</button>
@@ -422,8 +447,8 @@ function renderMes() {
       </div>
 
       <div class="seg-toggle">
-        <button class="${state.vista === "control" ? "active" : ""}" data-action="vista" data-vista="control">Por control</button>
         <button class="${state.vista === "categoria" ? "active" : ""}" data-action="vista" data-vista="categoria">Por categoría</button>
+        <button class="${state.vista === "control" ? "active" : ""}" data-action="vista" data-vista="control">Por control</button>
       </div>
       <div class="stack-gap">${bars}</div>
 
@@ -509,7 +534,7 @@ async function enviar() {
   state.error = null;
   state.focusInput = true;
   try {
-    const entrada = await postGasto(texto, state.divisa);   // responde al instante (pendiente)
+    const entrada = await postGasto(texto, state.divisa, state.fechaSel);   // responde al instante (pendiente)
     state.entradas.push(entrada);
   } catch (e) {
     state.error = "No pude guardar el gasto. ¿Está el servidor corriendo?";
@@ -568,6 +593,12 @@ async function pedirConsejo() {
     state.consejoLoading = false;
     render();
   }
+}
+
+function setFecha(f) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return;
+  state.fechaSel = f;
+  render();
 }
 
 function setDivisa(d) {
@@ -664,6 +695,11 @@ document.addEventListener("click", (ev) => {
     render();
   }
   else if (a === "vista") { state.vista = el.dataset.vista; render(); }
+  else if (a === "fecha-dia") { setFecha(addDias(state.fechaSel, Number(el.dataset.dir))); }
+  else if (a === "fecha-open") {
+    const inp = document.getElementById("fecha-input");
+    if (inp) { try { inp.showPicker(); } catch (e) { inp.focus(); } }
+  }
   else if (a === "consejo") { pedirConsejo(); }
   else if (a === "menu") { state.menuOpen = !state.menuOpen; render(); }
   else if (a === "logout") { logout(); }
@@ -711,6 +747,7 @@ document.addEventListener("input", (ev) => {
 document.addEventListener("change", (ev) => {
   const t = ev.target;
   const id = t.dataset.id ? Number(t.dataset.id) : null;
+  if (t.id === "fecha-input") { if (t.value) setFecha(t.value); return; }
   if (t.classList.contains("edit-divisa")) editarGasto(id, { divisa: t.value });
   else if (t.classList.contains("edit-cat")) {
     if (t.value === "__otra__") { state.editLibre.add(id); render(); }
@@ -746,6 +783,7 @@ document.addEventListener("blur", (ev) => {
     const sd = localStorage.getItem(DIVISA_KEY);
     if (sd && CUR_LIST.includes(sd)) state.divisa = sd;
   } catch (e) {}
+  state.fechaSel = todayStr();
 
   // ¿Hay sesión activa? (la cookie viaja sola). Si sí, cargamos sus datos; si no, login.
   try {

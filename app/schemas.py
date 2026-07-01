@@ -24,6 +24,7 @@ class GastoTexto(BaseModel):
     """Lo que manda el chat: texto libre (puede tener varios gastos)."""
     texto: str
     divisa: str = "ARS"   # divisa elegida en el chip (el texto puede pisarla)
+    fecha: str | None = None   # YYYY-MM-DD; None = hoy
 
 
 class ItemIA(BaseModel):

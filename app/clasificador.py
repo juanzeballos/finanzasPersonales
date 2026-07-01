@@ -59,20 +59,21 @@ def _buscar_concepto_en_texto(db: Session, usuario_id: int, texto: str):
     return max(candidatos, key=lambda f: len(f.concepto)) if candidatos else None
 
 
-def procesar_texto(db: Session, texto: str, usuario_id: int, divisa_chip: str = "ARS") -> dict:
+def procesar_texto(db: Session, texto: str, usuario_id: int, divisa_chip: str = "ARS", fecha=None) -> dict:
     """Clasifica el texto y agrega el/los Gasto(s) del usuario a la sesión (sin commit).
 
     La divisa = mención explícita en el texto, si la hay; si no, la del chip.
     Devuelve {"created": [Gasto], "missing": [str]}. Puede lanzar excepción si la IA falla.
     """
     divisa = detectar_divisa(texto) or divisa_chip
+    fecha = fecha or hoy_local()
     # --- 1) Atajo: concepto conocido + un único monto detectable -> sin IA ---
     montos = extraer_montos(texto)
     if len(montos) == 1:
         fila = _buscar_concepto_en_texto(db, usuario_id, texto)
         if fila:
             gasto = models.Gasto(
-                usuario_id=usuario_id, fecha=hoy_local(), descripcion=fila.descripcion,
+                usuario_id=usuario_id, fecha=fecha, descripcion=fila.descripcion,
                 monto=montos[0], categoria=fila.categoria, tipo=fila.tipo, emoji=fila.emoji,
                 divisa=divisa,
             )
@@ -98,7 +99,7 @@ def procesar_texto(db: Session, texto: str, usuario_id: int, divisa_chip: str = 
             categoria, tipo, emoji = aprendido.categoria, aprendido.tipo, aprendido.emoji
 
         gasto = models.Gasto(
-            usuario_id=usuario_id, fecha=hoy_local(), descripcion=descripcion,
+            usuario_id=usuario_id, fecha=fecha, descripcion=descripcion,
             monto=float(item.amount), categoria=categoria, tipo=tipo, emoji=emoji,
             divisa=divisa,
         )

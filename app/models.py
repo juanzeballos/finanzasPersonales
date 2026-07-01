@@ -47,6 +47,7 @@ class Entrada(Base):
     texto: Mapped[str] = mapped_column(String, nullable=False)
     estado: Mapped[str] = mapped_column(String, nullable=False, default="pendiente")  # pendiente|procesado|error
     divisa: Mapped[str] = mapped_column(String, nullable=False, default="ARS")  # divisa elegida en el chip al cargar
+    fecha_gasto: Mapped[date | None] = mapped_column(Date, nullable=True)  # fecha elegida al cargar; None = hoy
     error: Mapped[str | None] = mapped_column(String, nullable=True)
     creado_en: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 

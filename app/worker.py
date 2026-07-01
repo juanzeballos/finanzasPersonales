@@ -21,7 +21,7 @@ def _procesar_una(db, entrada_id: int) -> None:
     if not entrada or entrada.estado != "pendiente":
         return
     try:
-        res = procesar_texto(db, entrada.texto, entrada.usuario_id, entrada.divisa)
+        res = procesar_texto(db, entrada.texto, entrada.usuario_id, entrada.divisa, entrada.fecha_gasto)
         if res["missing"]:
             faltan = ", ".join(f"«{m}»" for m in res["missing"])
             entrada.estado = "falta_monto"
